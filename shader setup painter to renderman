@@ -1,6 +1,11 @@
 import hou 
 import os 
 
+#README this is assuming you're using a Houdini project folder, although it can still work 
+#if you aren't - just copy the absolute filepath in when it asks for the relative path. 
+#Although I don't recommend that. Also, make sure to export using the Renderman pxrSurface
+#preset from Substance Painter or it won't work. 
+
 #get texture folder - relative and absolute paths - and file format     
 #get ABSOLUTE filepath
 userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
