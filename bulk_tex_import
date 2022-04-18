@@ -46,9 +46,9 @@ folder = os.listdir(absoluteFilePath)
 
 for file in folder: 
     if file.endswith("_DiffuseColor"+fileFormat):
-        shaderName = str(file).replace(("_DiffuseColor"+fileFormat),"")
+        shaderFileName = str(file).replace(("_DiffuseColor"+fileFormat),"")
         #remove spaces
-        shaderName = shaderName.replace(" ","_")
+        shaderName = shaderFileName.replace(" ","_")
         print("creating shader for "+shaderName)
     else: continue
         
@@ -90,7 +90,7 @@ for file in folder:
     #import texture image files
     def ImportTextureFile(mapTypeNode, mapTypeString):
             for file in folder:
-                if file.startswith(shaderName):
+                if file.startswith(shaderFileName):
                     if file.endswith(mapTypeString+fileFormat):
                         #print ("importing the following file: " + str(file))
                         fullRelativeFilePath = relativeFilePath + "/" + str(file)
