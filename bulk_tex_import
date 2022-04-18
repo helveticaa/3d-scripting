@@ -47,6 +47,8 @@ folder = os.listdir(absoluteFilePath)
 for file in folder: 
     if file.endswith("_DiffuseColor"+fileFormat):
         shaderName = str(file).replace(("_DiffuseColor"+fileFormat),"")
+        #remove spaces
+        shaderName = shaderName.replace(" ","_")
         print("creating shader for "+shaderName)
     else: continue
         
