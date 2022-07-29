@@ -71,7 +71,7 @@ for file in folder:
     pxrSurface.setInput(14,specRoughness,1)
     #normal 
     normal = hou.node("/mat/"+shaderName+"_MAT").createNode("pxrnormalmap","normal_map")
-    pxrSurface.setInput(99,normal,0)
+    pxrSurface.setInput(103,normal,0)
     #displacement
     pxrDisplace = hou.node("mat/"+shaderName+"_MAT").createNode("pxrdisplace")
     #note: this is just a starting place. you'll likely have to adjust it manually furthur)
