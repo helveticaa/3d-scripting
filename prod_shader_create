@@ -5,33 +5,21 @@ import os
 #matLibNode = hou.node("/stage/pxr_book_fire_shelf_bot_a")
 #matLibNode.createNode("pxrsurface")
 
-#get texture folder - relative and absolute paths - and file format     
-    #get ABSOLUTE filepath
+
+#get texture folder and file format     
+#get ABSOLUTE filepath
 userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
 "texture files: ",buttons=("okay","close",),default_choice=0,title="import texture files")
 
 if (userInput[0] == 1):
     quit()
-absoluteFilePath = userInput[1]
+filePath = userInput[1]
 
-#print ("unmodified absolute filepath is: " + absoluteFilePath)
+#print ("unmodified filepath is: " + filePath)
 #change forward slashes to backslashes 
-absoluteFilePath = absoluteFilePath.replace("\\","/")
-#print("corrected absolute filepath is: " + absoluteFilePath)
+filePath = filePath.replace("\\","/")
+#print("corrected relative filepath is: " + filePath)
 
-#get RELATIVE filepath
-userInput = hou.ui.readInput("What is the relative filepath where you saved your textures?" 
-+ "(ex. \"$HIP/tex/character_textures\"",buttons=("okay","close",),default_choice=0,
-title="import texture files")
-
-if (userInput[0] == 1):
-    quit()
-relativeFilePath = userInput[1]
-
-#print ("unmodified relative filepath is: " + relativeFilePath)
-#change forward slashes to backslashes 
-relativeFilePath = relativeFilePath.replace("\\","/")
-#print("corrected relative filepath is: " + relativeFilePath)
 
 fileFormatNum = hou.ui.displayMessage("What file format did you use to save your texture " + 
 "files?",buttons=(".png",".jpg",".tif","close",),default_choice=0,title="import texture files")
@@ -46,7 +34,7 @@ elif(fileFormatNum == 3):
     quit()
 
 #determine shaderName 
-folder = os.listdir(absoluteFilePath)
+folder = os.listdir(filePath)
 
 for file in folder: 
     if file.endswith("_DiffuseColor"+fileFormat):
@@ -61,7 +49,8 @@ for file in folder:
     #cleanup
     toDelete = hou.vopNodeTypeCategory().nodeType("usdpreviewsurface").instances()
     print(toDelete)
-    toDelete[0].destroy()
+    if(len(toDelete)!= 0):
+        toDelete[0].destroy()
     
     #make blank pxrtexture network named after first file in folder MINUS basecolor + fileformat
     #pxrMaterialBuilder = matLib.createNode("pxrmaterialbuilder",shaderName+"_MAT")
@@ -113,9 +102,9 @@ for file in folder:
                 if file.startswith(shaderFileName):
                     if file.endswith(mapTypeString+fileFormat):
                         #print ("importing the following file: " + str(file))
-                        fullRelativeFilePath = relativeFilePath + "/" + str(file)
+                        fullFilePath = filePath + "/" + str(file)
                         #print ("full file path is as follows: " + fullFilePath)
-                        mapTypeNode.parm("filename").set(fullRelativeFilePath)
+                        mapTypeNode.parm("filename").set(fullFilePath)
                         
     ImportTextureFile(diffuseColor, "DiffuseColor")
     ImportTextureFile(specFaceColor, "SpecularFaceColor")
