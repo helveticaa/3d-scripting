@@ -1,0 +1,25 @@
+import hou 
+import os 
+
+stageNodes = hou.node("/stage/").children()
+matLib = stageNodes[0]
+matLibLoc = "/stage/"+str(matLib)+"/"
+print(matLibLoc)
+
+diffuseColor = hou.node(matLibLoc + "diffuse_color_pxrtexture")
+specFaceColor = hou.node(matLibLoc + "spec_face_color_pxrtexture")
+specRoughness = hou.node(matLibLoc + "spec_roughness_pxrtexture")
+normal = hou.node(matLibLoc + "normal_map")
+displacement = hou.node(matLibLoc + "displacement_pxrtexture")
+
+def updateTex(texType):
+    ogFilename = texType.parm("filename").eval()
+    if(".png.tex" not in ogFilename):
+        newFilename = ogFilename.replace(".png","_srgbtex_acescg.png.tex")
+        texType.parm("filename").set(newFilename)
+
+updateTex(diffuseColor)
+updateTex(specFaceColor)
+updateTex(specRoughness)
+updateTex(normal)
+updateTex(displacement)
