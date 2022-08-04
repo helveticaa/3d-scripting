@@ -1,11 +1,6 @@
 import hou 
 import os 
 
-
-#matLibNode = hou.node("/stage/pxr_book_fire_shelf_bot_a")
-#matLibNode.createNode("pxrsurface")
-
-
 #get texture folder and file format     
 #get ABSOLUTE filepath
 userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
