@@ -1,0 +1,52 @@
+#prep and export camera for use in Unreal 
+#this will export the animation in the complete range of the scene
+#(not just what you can see in the time slider)
+#this will only work on windows (I think? FIXME needs more testing)
+import maya.cmds as mc
+import maya.mel as mel
+
+def ExportCamUnreal():
+    #get shot number
+    result = mc.promptDialog(
+    		title='Export camera for Unreal',
+    		message='Enter shot number (include leading zeros):',
+    		button=['OK', 'Cancel'],
+    		defaultButton='OK',
+    		cancelButton='Cancel',
+    		dismissString='Cancel')
+    
+    if result == 'OK':
+    	shot_num = mc.promptDialog(query=True, text=True)
+    else:
+        return 1
+    
+    #initialize
+    start_frame=mc.playbackOptions(ast=0,q=1)
+    end_frame=mc.playbackOptions(aet=0,q=1)
+    #parent_cam="_ShotCam:ShotCam_000"
+    parent_cam=mc.ls(selection=1)
+    
+    #create new camera
+    new_cam_name="shot_cam_"+str(shot_num)
+    new_cam=mc.camera(ar=1.85,hfa=1.748,dfg=1,n=new_cam_name)
+    mc.setAttr(str(new_cam[1])+".locatorScale",15)
+    
+    #constrain, bake, clean up
+    mc.parentConstraint(parent_cam,new_cam[0],mo=0)
+    mc.bakeResults(new_cam[0],t=(start_frame,end_frame))
+    mc.delete(cn=1)
+    
+    #export
+    path = mc.fileDialog2(fileMode=3, dialogStyle=1, caption="Choose save location: ")[0]
+    #play nice with mel
+    path=path.replace("\\","/")
+    shot_name="shot_cam_"+str(shot_num)
+    path=(path+"/"+shot_name+".fbx")
+    mel.eval('FBXExport -f "'+path+'" -s')
+    #delete duplicate camera   
+    mc.select(new_cam) 
+    mc.delete()
+    
+    print("done!")
+    
+ExportCamUnreal()
