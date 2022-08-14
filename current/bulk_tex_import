@@ -1,0 +1,107 @@
+import hou 
+import os 
+
+#get texture folder - relative and absolute paths - and file format     
+    #get ABSOLUTE filepath
+userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
+"texture files: ",buttons=("okay","close",),default_choice=0,title="import texture files")
+
+if (userInput[0] == 1):
+    quit()
+absoluteFilePath = userInput[1]
+
+#print ("unmodified absolute filepath is: " + absoluteFilePath)
+#change forward slashes to backslashes 
+absoluteFilePath = absoluteFilePath.replace("\\","/")
+#print("corrected absolute filepath is: " + absoluteFilePath)
+
+#get RELATIVE filepath
+userInput = hou.ui.readInput("What is the relative filepath where you saved your textures?" 
++ "(ex. \"$HIP/tex/character_textures\"",buttons=("okay","close",),default_choice=0,
+title="import texture files")
+
+if (userInput[0] == 1):
+    quit()
+relativeFilePath = userInput[1]
+
+#print ("unmodified relative filepath is: " + relativeFilePath)
+#change forward slashes to backslashes 
+relativeFilePath = relativeFilePath.replace("\\","/")
+#print("corrected relative filepath is: " + relativeFilePath)
+
+fileFormatNum = hou.ui.displayMessage("What file format did you use to save your texture " + 
+"files?",buttons=(".png",".jpg",".tif","close",),default_choice=0,title="import texture files")
+
+if(fileFormatNum == 0):
+    fileFormat = ".png"
+elif(fileFormatNum == 1):
+    fileFormat = ".jpg"
+elif(fileFormatNum == 2):
+    fileFormat = ".tif"
+elif(fileFormatNum == 3):
+    quit()
+
+#determine shaderName 
+folder = os.listdir(absoluteFilePath)
+
+for file in folder: 
+    if file.endswith("_DiffuseColor"+fileFormat):
+        shaderFileName = str(file).replace(("_DiffuseColor"+fileFormat),"")
+        #remove spaces
+        shaderName = shaderFileName.replace(" ","_")
+        print("creating shader for "+shaderName)
+    else: continue
+        
+    #make blank pxrtexture network named after first file in folder MINUS basecolor + fileformat
+    pxrMaterialBuilder = hou.node("mat").createNode("pxrmaterialbuilder",shaderName+"_MAT")
+    outputCollect = hou.node("mat/"+shaderName+"_MAT/output_collect")
+    #create pxrSurface and wire into output_collect
+    pxrSurface = hou.node("mat/"+shaderName+"_MAT").createNode("pxrsurface")
+    outputCollect.setInput(0,pxrSurface,0)
+    #diffuse color
+    diffuseColor = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","diffuse_color_pxrtexture")
+    diffuseColor.parm("linearize").set(1)
+    pxrSurface.setInput(2,diffuseColor,0)
+    #specular face color
+    specFaceColor = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","spec_face_color_pxrtexture")
+    specFaceColor.parm("linearize").set("1")
+    pxrSurface.setInput(9,specFaceColor,0)
+    #specular roughness
+    specRoughness = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","spec_roughness_pxrtexture")
+    pxrSurface.setInput(14,specRoughness,1)
+    #normal 
+    normal = hou.node("/mat/"+shaderName+"_MAT").createNode("pxrnormalmap","normal_map")
+    pxrSurface.setInput(103,normal,0)
+    #displacement
+    pxrDisplace = hou.node("mat/"+shaderName+"_MAT").createNode("pxrdisplace")
+    #note: this is just a starting place. you'll likely have to adjust it manually furthur)
+    pxrDisplace.parm("dispAmount").set("0.015")
+    outputCollect.setInput(1,pxrDisplace,0)
+    pxrDispTransform = hou.node("mat/"+shaderName+"_MAT").createNode("pxrdisptransform")
+    #this is assuming your displacement map has a midpoint of 0.5 
+    #(which if you're using substance painter usually it will)
+    pxrDispTransform.parm("dispRemapMode").set("2")
+    pxrDisplace.setInput(1,pxrDispTransform,1)
+    displacement = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","displacement_pxrtexture")
+    pxrDispTransform.setInput(0,displacement,1)
+    #layout nodes inside shader
+    hou.node("mat/"+shaderName+"_MAT").layoutChildren()
+    
+    #import texture image files
+    def ImportTextureFile(mapTypeNode, mapTypeString):
+            for file in folder:
+                if file.startswith(shaderFileName):
+                    if file.endswith(mapTypeString+fileFormat):
+                        #print ("importing the following file: " + str(file))
+                        fullRelativeFilePath = relativeFilePath + "/" + str(file)
+                        #print ("full file path is as follows: " + fullFilePath)
+                        mapTypeNode.parm("filename").set(fullRelativeFilePath)
+                        
+    ImportTextureFile(diffuseColor, "DiffuseColor")
+    ImportTextureFile(specFaceColor, "SpecularFaceColor")
+    ImportTextureFile(specRoughness, "SpecularRoughness")
+    ImportTextureFile(displacement, "Displacement")
+    ImportTextureFile(normal, "Normal")
+    
+#layout all shader nodes
+hou.node("mat/").layoutChildren()

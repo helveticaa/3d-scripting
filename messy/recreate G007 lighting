@@ -1,0 +1,67 @@
+import hou 
+
+#cam1
+hou.node("obj").createNode("cam", "cam1")
+hou.node("obj/cam1/").parm("tx").set(0.2)
+hou.node("obj/cam1/").parm("ty").set(0.4)
+hou.node("obj/cam1/").parm("tz").set(1.8)
+hou.node("obj/cam1/").parm("rx").set(-12)
+hou.node("obj/cam1/").parm("ry").set(6.5)
+
+#domeLight
+hou.node("obj").createNode("pxrdomelight", "domeLight")
+hou.node("obj/domeLight").parm("lightColorMap").set("/groups/salt/Production/Lighting/HDRI/LA_Downtown_Afternoon_Fishing_3k.hdr")
+hou.node("obj/domeLight").parm("intensity").set(1.7)
+hou.node("obj/domeLight").parm("ry").set(-171.057)
+
+#blueFill
+hou.node("obj/").createNode("pxrrectlight", "blueFill")
+hou.node("obj/blueFill/").parm("tx").set(-13.4641)
+hou.node("obj/blueFill/").parm("ty").set(15.4408)
+hou.node("obj/blueFill/").parm("tz").set(-1.76822)
+hou.node("obj/blueFill/").parm("rx").set(-49.6361)
+hou.node("obj/blueFill/").parm("ry").set(-84.3796)
+hou.node("obj/blueFill/").parm("rz").set(0.00104345)
+hou.node("obj/blueFill/").parm("intensity").set(1.289)
+hou.node("obj/blueFill/").parm("exposure").set(10)
+hou.node("obj/blueFill/").parm("lightColorr").set(0.294)
+hou.node("obj/blueFill/").parm("lightColorg").set(0.5764)
+hou.node("obj/blueFill/").parm("lightColorb").set(1)
+
+#boatKey
+hou.node("obj/").createNode("pxrdisklight", "boatKey")
+hou.node("obj/boatKey/").parm("tx").set(-7.43429)
+hou.node("obj/boatKey/").parm("ty").set(2.50872)
+hou.node("obj/boatKey/").parm("tz").set(-13.1704)
+hou.node("obj/boatKey/").parm("rx").set(-6.1314)
+hou.node("obj/boatKey/").parm("ry").set(-151.533)
+hou.node("obj/boatKey/").parm("rz").set(2.56181e-05)
+hou.node("obj/boatKey/").parm("sx").set(0.569716)
+hou.node("obj/boatKey/").parm("sy").set(0.569716)
+hou.node("obj/boatKey/").parm("sz").set(0.569716)
+hou.node("obj/boatKey/").parm("intensity").set(10)
+hou.node("obj/boatKey/").parm("exposure").set(9)
+hou.node("obj/boatKey/").parm("lightColorr").set(1)
+hou.node("obj/boatKey/").parm("lightColorg").set(0.860933)
+hou.node("obj/boatKey/").parm("lightColorb").set(0.702)
+hou.node("obj/boatKey/").parm("coneAngle").set(48.2)
+
+#keyLight
+hou.node("obj/").createNode("pxrdisklight", "keyLight")
+hou.node("obj/keyLight/").parm("tx").set(-4.84558)
+hou.node("obj/keyLight/").parm("ty").set(8.19596)
+hou.node("obj/keyLight/").parm("tz").set(-10.2037)
+hou.node("obj/keyLight/").parm("rx").set(-38.5401)
+hou.node("obj/keyLight/").parm("ry").set(-161.46)
+hou.node("obj/keyLight/").parm("rz").set(1.66205e-05)
+hou.node("obj/keyLight/").parm("sx").set(0.569716)
+hou.node("obj/keyLight/").parm("sy").set(0.569716)
+hou.node("obj/keyLight/").parm("sz").set(0.569716)
+hou.node("obj/keyLight/").parm("intensity").set(10)
+hou.node("obj/keyLight/").parm("exposure").set(9)
+hou.node("obj/keyLight/").parm("lightColorr").set(1)
+hou.node("obj/keyLight/").parm("lightColorg").set(0.860933)
+hou.node("obj/keyLight/").parm("lightColorb").set(0.702)
+hou.node("obj/keyLight/").parm("coneAngle").set(48.2)
+
+hou.node("obj").layoutChildren()

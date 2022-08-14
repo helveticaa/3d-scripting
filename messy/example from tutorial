@@ -1,0 +1,92 @@
+import os
+
+buildings_path = hou.node(".").parm("path_to_buildings").eval() 
+buildings_folder = os.listdir(buildings_path)
+
+merge_into_switch_residential = hou.node(".").createNode("merge", "merge_res")
+#merge_into_switch_commercial = hou.node(".").createNode("merge","merge_com")
+
+switch_residential = hou.node(".").createNode("switch", "switch_residential")
+switch_commercial = hou.node(".").createNode("switch", "switch_commercial")
+
+merge = hou.node(".").createNode("merge")
+counter = 0
+
+#import buildings
+for file in buildings_folder:
+    if file.endswith(".obj"):
+    
+        #residential buildings
+        if file.startswith("0"):
+            
+            #variables (residential)
+            fullpath = buildings_path + file
+            building_id= file.split(".")[0]
+            
+            #nodes (residential)
+            file_node = hou.node(".").createNode("file")
+            file_node.parm("file").set(fullpath)
+            
+            bbox = hou.node(".").createNode("bound", "bound_residential")
+            bbox.setFirstInput(file_node)
+            
+            attributes_residential = hou.node(".").createNode("attribcreate")
+            attributes_residential.parm("numattr").set(3)
+            attributes_residential.parm("name1").set("building_id")
+            attributes_residential.parm("type1").set(1)
+            attributes_residential.parm("value1v1").set(building_id)
+            attributes_residential.parm("name2").set("building_height")
+            attributes_residential.parm("type2").set(0)
+            attributes_residential.parm("value2v1").setExpression('prim("../"+opinput(".", 0), 5, "P", 1)')
+            attributes_residential.parm("name3").set("building_type")
+            attributes_residential.parm("type3").set(3)
+            attributes_residential.parm("string3").set("residential")
+            
+            #set inputs (residential)
+            attributes_residential.setFirstInput(bbox)
+            merge.setInput(counter, attributes_residential)
+            
+            merge_into_switch_residential.setInput(counter, attributes_residential)
+            
+            switch_residential.setFirstInput(merge_into_switch_residential)
+            counter += 1
+            
+        
+        #commercial buildings
+        if file.startswith("1"):
+            
+            #variables (commercial)
+            fullpath = buildings_path + file
+            building_id = file.split(".")[0]
+            
+            #nodes (commercial)
+            file_node = hou.node(".").createNode("file")
+            file_node.parm("file").set(fullpath)
+            
+            bbox = hou.node(".").createNode("bound", "bound_commercial")
+            bbox.setFirstInput(file_node)
+            
+            attributes_commercial = hou.node(".").createNode("attribcreate")
+            attributes_commercial.parm("numattr").set(3)
+            attributes_commercial.parm("name1").set("building_id")
+            attributes_commercial.parm("type1").set(1)
+            attributes_commercial.parm("value1v1").set(building_id)
+            attributes_commercial.parm("name2").set("building_height")
+            attributes_commercial.parm("type2").set(0)
+            attributes_commercial.parm("value2v1").setExpression('prim("../"+opinput(".", 0), 5, "P", 1)')
+            attributes_commercial.parm("name3").set("building_type")
+            attributes_commercial.parm("type3").set(3)
+            attributes_commercial.parm("string3").set("commercial")
+            
+            #set inputs (commercial)
+            attributes_commercial.setFirstInput(bbox)
+            merge.setInput(counter, attributes_commercial)
+            if building_id.endswith("0"):
+                #merge_into_switch_commercial.setInput(counter, attributes_commercial)
+                #switch_commercial.setFirstInput(merge_into_switch_commercial)
+                switch_commercial.setInput(counter, attributes_commercial)
+            counter += 1
+            
+#layout nodes
+hou.node(".").layoutChildren()
+print "finished importing buildings"

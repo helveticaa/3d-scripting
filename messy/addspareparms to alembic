@@ -1,0 +1,56 @@
+import toolutils
+import hou
+
+#add spare parameters to an alembic
+
+alembic_node = hou.node("/obj/alembicarchive1/")
+xform_children = alembic_node.children()
+
+i = 0
+for xform_node in xform_children:
+    #select node
+    geo_name = xform_children[i].name()
+    curNode = hou.node("/obj/alembicarchive1/"+geo_name+"/"+geo_name+"Shape/")
+    curNode.setSelected(1, clear_all_selected = 1)
+    
+    #add spare parameters    
+    scene_viewer = toolutils.sceneViewer()
+    targets = scene_viewer.selectObjects(
+                    prompt = toolutils.selectionPrompt(hou.objNodeTypeCategory()),
+                    allow_multisel = True)
+    
+    vtuple = hou.applicationVersion()
+    rfhtree = hou.getenv("RFHTREE")
+    
+    renderobjnames = ["geo"]
+    rendercamnames = ["cam"]
+    for target in targets:
+    
+        if target.type().name() in renderobjnames:
+            path = rfhtree + "/18.5.351/soho/parameters/geoparms.ds"
+        elif target.type().name() in rendercamnames:
+            path = rfhtree + "/18.5.351/soho/parameters/camparms.ds"
+        else:
+            break
+    
+        grp = target.parmTemplateGroup()
+        spareparms = hou.ParmTemplateGroup()
+        with open(path) as file:
+            ds = file.read()
+            spareparms.setToDialogScript(ds)
+        for template in spareparms.parmTemplates():
+            grp.append(template)
+    
+        try:
+            target.parmsInFolder(("RenderMan",))
+        except:
+            target.setParmTemplateGroup(grp)
+    
+        if target.type().name() == "geo":
+            hou.hscript("opproperty %s prman23geo *" % target.path())
+        elif target.type().name() == "cam":
+            hou.hscript("opproperty %s prman23cam *" % target.path())
+    print ("added spare parameters to " + curNode.name())
+        
+    i += 1
+print ("done)")

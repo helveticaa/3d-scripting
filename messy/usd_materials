@@ -1,0 +1,42 @@
+import hou 
+import os 
+
+assetName = "fireplace"
+meshPath = "/groups/unfamiliar/publish/previs/assets/previs_fireplace/previs_fireplace.usd"
+matPath = "/groups/unfamiliar/publish/previs/assets/previs_fireplace/materials/"+assetName+"_materials.usd"
+
+#bring in mesh
+sublayer = hou.node("/stage").createNode("sublayer")
+sublayer.parm("filepath1").set(meshPath)
+
+#create material library 
+matLibrary = hou.node("/stage").createNode("materiallibrary")
+matLibrary.parm("assign1").set(1)
+#create material INSIDE material library node
+#matLibrary.parm("matpath1").set("/materials/"+assetName+"_P_MAT")
+#matLibrary.parm("geopath1").set("/"+assetName)
+
+#set up a layer and save location for the material
+configLayer = hou.node("/stage").createNode("configurelayer")
+configLayer.parm("setsavepath").set(1)
+configLayer.parm("savepath").set(matPath)
+
+#create "main" layer
+ref = hou.node("/stage").createNode("reference")
+ref.parm("primpath").set("/"+assetName+"/materials")
+ref.parm("reftype").set("inputref")
+
+#assign material
+assignMat = hou.node("/stage").createNode("assignmaterial")
+
+#write a USD file
+rop = hou.node("/stage").createNode("usd_rop")
+
+#wire up
+configLayer.setInput(0,matLibrary,0)
+ref.setInput(1,configLayer,0)
+ref.setInput(0,sublayer,0)
+assignMat.setInput(0,ref,0)
+rop.setInput(0,assignMat,0)
+
+hou.node("/stage").layoutChildren()

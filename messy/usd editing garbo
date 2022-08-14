@@ -1,0 +1,20 @@
+from pxr import Usd, UsdGeom
+
+path="/users/animation/hales579/USD_testing/teapot/"
+usdFileName="teapot"
+vNum=1
+matName="yaat"
+
+#open USD
+stage = Usd.Stage.Open(path+usdFileName+".usda")
+
+
+#do stuff to USD
+prim = stage.DefinePrim("/previs_teapot_mesh/Looks/testMaterial/"+matName,"Material")
+#colorAttrib = UsdGeom.Color3d(prim)
+
+#print(colorAttrib.GetPath())
+
+
+#stage.Save()
+stage.Export(path+usdFileName+"_0"+str(vNum)+".usda")

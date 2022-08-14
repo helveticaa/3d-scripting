@@ -1,0 +1,80 @@
+from pxr import Gf, Kind, Sdf, Usd, UsdGeom, UsdShade
+
+
+path="/users/animation/hales579/USD_testing/"
+
+
+#create stage and set up axis
+stage = Usd.Stage.CreateNew(path+"gooberBlue.usda")
+UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
+
+modelRoot = UsdGeom.Xform.Define(stage, "/TexModel")
+Usd.ModelAPI(modelRoot).SetKind(Kind.Tokens.component)
+
+##############################
+
+bigOlCard = UsdGeom.Mesh.Define(stage, "/TexModel/card")
+bigOlCard.CreatePointsAttr([(-430, -145, 0), (430, -145, 0), (430, 145, 0), (-430, 145, 0)])
+bigOlCard.CreateFaceVertexCountsAttr([4])
+bigOlCard.CreateFaceVertexIndicesAttr([0,1,2,3])
+bigOlCard.CreateExtentAttr([(-430, -145, 0), (430, 145, 0)])
+texCoords = bigOlCard.CreatePrimvar("st",
+                                    Sdf.ValueTypeNames.TexCoord2fArray,
+                                    UsdGeom.Tokens.varying)
+texCoords.Set([(0, 0), (1, 0), (1,1), (0, 1)])
+
+stage.Save()
+
+#######################
+
+material = UsdShade.Material.Define(stage, '/TexModel/M_card')
+
+#######################
+#ADD A USDPREVIEWSURFACE
+
+#CREATE A NODE: the surface shader! it is a child of the material prim. 
+shaderBOI = UsdShade.Shader.Define(stage, '/TexModel/M_card/shaderBOI')
+shaderBOI.CreateIdAttr("UsdPreviewSurface")
+#set some inputs (any inputs it doesn't set will be the defaults from the surface specification)
+shaderBOI.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.4)
+shaderBOI.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+
+#connect the new surface output we just made to the material 
+material.CreateSurfaceOutput().ConnectToSource(shaderBOI, "surface")
+
+#########################
+#ADD TEXTURING
+
+#CREATE A NODE: the UsdPrimvarReader. This node gets a tex coord from each piece of geo bound to 
+    #the material, which tell the texture node how to map surface coords to tex coords
+stReader = UsdShade.Shader.Define(stage, '/TexModel/M_card/stReader')
+#give it an id
+stReader.CreateIdAttr('UsdPrimvarReader_float2')
+
+#CREATE A NODE: UsdUVTexturenode. To read and map the texture
+diffuseTextureSampler = UsdShade.Shader.Define(stage,'/TexModel/M_card/diffuseTexture')
+#give it an id
+diffuseTextureSampler.CreateIdAttr('UsdUVTexture')
+#create a file input and set it to the path to point to the location of the texture image
+diffuseTextureSampler.CreateInput('file', Sdf.ValueTypeNames.Asset).Set(path+"wheee.png")
+diffuseTextureSampler.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(stReader, 'result')
+diffuseTextureSampler.CreateOutput('rgb', Sdf.ValueTypeNames.Float3)
+shaderBOI.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(diffuseTextureSampler, 'rgb')
+
+###########################
+#SPECIFY PRIMVAR
+
+#tell the PrimvarReader you just made which tex coord to read. (note: the tex coord is a primvar)
+    #do this by connecting shader inputs to a "public interface attribute" of the material. 
+    #basically you're exposing the input of an inner node in the shading network so people can 
+    #easily edit and override them, without needing to dig around inside the material itself 
+stInput = material.CreateInput('frame:stPrimvarName', Sdf.ValueTypeNames.Token)
+stInput.Set('st')
+
+stReader.CreateInput('varname',Sdf.ValueTypeNames.Token).ConnectToSource(stInput)
+
+##################################
+#BIND AND SAVE
+UsdShade.MaterialBindingAPI(bigOlCard).Bind(material)
+
+stage.Save()

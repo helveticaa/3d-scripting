@@ -1,0 +1,95 @@
+import hou 
+import os 
+
+#get texture folder - relative and absolute paths - and file format     
+    #get ABSOLUTE filepath
+userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
+"texture files: ",buttons=("okay","close",),default_choice=0,title="import texture files")
+
+if (userInput[0] == 1):
+    quit()
+absoluteFilePath = userInput[1]
+
+#print ("unmodified absolute filepath is: " + absoluteFilePath)
+#change forward slashes to backslashes 
+absoluteFilePath = absoluteFilePath.replace("\\","/")
+#print("corrected absolute filepath is: " + absoluteFilePath)
+
+#get RELATIVE filepath
+userInput = hou.ui.readInput("What is the relative filepath where you saved your textures?" 
++ "(ex. \"$HIP/tex/character_textures\"",buttons=("okay","close",),default_choice=0,
+title="import texture files")
+
+if (userInput[0] == 1):
+    quit()
+relativeFilePath = userInput[1]
+
+#print ("unmodified relative filepath is: " + relativeFilePath)
+#change forward slashes to backslashes 
+relativeFilePath = relativeFilePath.replace("\\","/")
+#print("corrected relative filepath is: " + relativeFilePath)
+
+fileFormatNum = hou.ui.displayMessage("What file format did you use to save your texture " + 
+"files?",buttons=(".png",".jpg",".tif","close",),default_choice=0,title="import texture files")
+
+if(fileFormatNum == 0):
+    fileFormat = ".png"
+elif(fileFormatNum == 1):
+    fileFormat = ".jpg"
+elif(fileFormatNum == 2):
+    fileFormat = ".tif"
+elif(fileFormatNum == 3):
+    quit()
+
+#determine shaderName 
+folder = os.listdir(absoluteFilePath)
+
+for file in folder: 
+    if file.endswith("_basecolor"+fileFormat):
+        shaderFileName = str(file).replace(("_basecolor"+fileFormat),"")
+        #remove spaces
+        shaderName = shaderFileName.replace(" ","_")
+        print("creating shader for "+shaderName)
+    else: continue
+        
+    #make blank texture network named after first file in folder MINUS basecolor + fileformat
+    principledShader = hou.node("mat/").createNode("principledshader",shaderName)
+    principledShader.parm("dispInput_enable").set(1)
+    #base color
+    baseColor = hou.node("mat/").createNode("texture","base_color_map")
+    principledShader.setInput(1,baseColor,0)
+    #roughness
+    roughness = hou.node("mat/").createNode("texture","roughness_map")
+    principledShader.setInput(7,roughness,0)
+    #normal 
+    normal = hou.node("/mat/").createNode("displacetexture","normal_map")
+    normal.parm("type").set("normal")
+    principledShader.setInput(219,normal,1)
+    
+    #displacement
+    height = hou.node("mat/").createNode("displacetexture","height_map")
+    height.parm("scale").set("0.075")
+    principledShader.setInput(221,height,3)
+    #layout nodes inside shader
+    hou.node("mat/").layoutChildren()
+    
+    #import texture image files
+    def ImportTextureFile(mapTypeNode, mapTypeString):
+            for file in folder:
+                if file.startswith(shaderFileName):
+                    if file.endswith(mapTypeString+fileFormat):
+                        print ("importing the following file: " + str(file))
+                        fullRelativeFilePath = relativeFilePath + "/" + str(file)
+                        print ("full relative file path is as follows: " + fullRelativeFilePath)
+                        if(mapTypeString == "basecolor" or mapTypeString == "roughness"):
+                            mapTypeNode.parm("map").set(fullRelativeFilePath)
+                        elif(mapTypeString == "normal" or mapTypeString == "height"):
+                            mapTypeNode.parm("texture").set(fullRelativeFilePath)
+                        
+    ImportTextureFile(baseColor, "basecolor")
+    ImportTextureFile(roughness, "roughness")
+    ImportTextureFile(normal, "normal")
+    ImportTextureFile(height, "height")
+    
+#layout all shader nodes
+hou.node("mat/").layoutChildren()

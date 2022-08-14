@@ -1,0 +1,37 @@
+import hou
+import os
+
+#absolute file path? 
+userInput = hou.ui.readInput("copy and paste the absolute path to the folder containing your "
++"asset files: ",buttons=("okay","close",)
+,default_choice=0,title = "file import tool")
+absFilePath = userInput[1]
+if (absFilePath[0] == 1):
+    quit()
+#change forward slashes to backslashes 
+print ("old absolute location is: " + absFilePath)
+absFilePath = absFilePath.replace("\\","/")
+print ("new absolute location is: " + absFilePath)
+
+#relative file path?
+userInput = hou.ui.readInput("copy and paste the relative path to the folder containing your asset files "
++"(ex.\"$HIP/geo/my_assets\")",buttons=("okay","close",)
+,default_choice=0,title = "file import tool")
+relFilePath = userInput[1]
+if (userInput[0] == 1):
+    quit()
+#change forward slashes to backslashes 
+print ("old relative location is: " + relFilePath)
+relFilePath = relFilePath.replace("\\","/")
+print ("new relative location is: " + relFilePath)
+
+#pull the files from the folder into a list of files 
+filesToImport = os.listdir(absFilePath)
+for file in filesToImport:
+    #create file node
+    newGeoNode = hou.node("/obj").createNode("geo",str(file)+"_GEO")
+    newFileNode = hou.node("/obj/"+str(file)+"_GEO").createNode("file",str(file)+"_GEO")
+    newFileNode.parm("file").set(relFilePath+"/"+str(file))
+    
+#layout nodes
+hou.node("obj/").layoutChildren()

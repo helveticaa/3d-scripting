@@ -1,0 +1,75 @@
+import toolutils
+import hou
+
+#Assign previously created shaders to geo and prepare the geo for rendering 
+#README: 
+    #geo nodes must all be stored in the same subnet in the /obj context
+    #shader nodes must end in _MAT and be saved in the /mat context
+    #each geo node and its shader node must have the exact same base name
+    #it's okay for geo nodes to have the same base name with "Shape" at the end (the alembic naming convention)
+
+#get name of geo subnet 
+user_geo_subnet_name = hou.ui.readInput("enter the name of the subnet containing your geo nodes: ",buttons=("okay","close",)
+,default_choice=0,title="")
+
+geo_subnet = hou.node("/obj/"+user_geo_subnet_name[1])
+geo_list = geo_subnet.children()
+
+i = 0
+for geo_node in geo_list:
+    #select node
+    geo_name_full = geo_list[i].name()
+    #strip geo node name down to base name
+    geo_name_base = geo_name_full.replace("Shape","")
+    
+    curNode = hou.node("/obj/"+user_geo_subnet_name[1]+"/"+geo_name_full)
+    curNode.setSelected(1, clear_all_selected = 1)
+    
+    #add spare parameters    
+    scene_viewer = toolutils.sceneViewer()
+    targets = scene_viewer.selectObjects(
+                    prompt = toolutils.selectionPrompt(hou.objNodeTypeCategory()),
+                    allow_multisel = True)
+    
+    vtuple = hou.applicationVersion()
+    rfhtree = hou.getenv("RFHTREE")
+    
+    renderobjnames = ["geo"]
+    rendercamnames = ["cam"]
+    for target in targets:
+    
+        if target.type().name() in renderobjnames:
+            path = rfhtree + "/18.5.351/soho/parameters/geoparms.ds"
+        elif target.type().name() in rendercamnames:
+            path = rfhtree + "/18.5.351/soho/parameters/camparms.ds"
+        else:
+            break
+    
+        grp = target.parmTemplateGroup()
+        spareparms = hou.ParmTemplateGroup()
+        with open(path) as file:
+            ds = file.read()
+            spareparms.setToDialogScript(ds)
+        for template in spareparms.parmTemplates():
+            grp.append(template)
+    
+        try:
+            target.parmsInFolder(("RenderMan",))
+        except:
+            target.setParmTemplateGroup(grp)
+    
+        if target.type().name() == "geo":
+            hou.hscript("opproperty %s prman23geo *" % target.path())
+        elif target.type().name() == "cam":
+            hou.hscript("opproperty %s prman23cam *" % target.path())
+    print ("added spare parameters to " + curNode.name())
+    
+    #render subdivisions
+    curNode.parm("rendersubd").set(1)
+    print ("turned on render as subdivided for " + curNode.name())
+    
+    curNode.parm("shop_materialpath").set("/mat/"+geo_name_base+"_MAT")
+    
+    #update iterator    
+    i += 1
+print ("done)")

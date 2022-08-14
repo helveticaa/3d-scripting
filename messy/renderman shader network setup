@@ -1,0 +1,181 @@
+import hou
+import os
+
+#README
+#updated 08.17.2021 - set default displacement gain to 0.015 and normal input slot to 99 
+#The purpose of this script is to make your life as a shader easier! It will set up a basic renderman
+    #shader network, do your color management, set the corect midpoints for displacement, etc. It can
+    #also import your texture files from a given folder on your computer for you. 
+
+#there are 3 different types of network you can create:
+    #1. default shader network with empty pxrtexture nodes plugged in
+    #2. default shader network with your texture files loaded into the pxrtexture nodes
+    #3. primvar shader network (this is still sort of in development - right now it only pipes in the
+        #Cd primvar)
+        
+#important things to know:
+#You'll only be able to import your files if you exported them from Substance Painter using the 
+    #Renderman preset. If you didn't export with the Renderman preset, just go back into Substance 
+    #Painter and exporting correctly before trying to use this tool. It will 
+    #spare you a lot of unneccessary fiddling:)
+#If you want to use the importing files part of the tool, make sure you don't have multiple 
+    #versions of a texture file lying around in the folder you're importing from; the script will 
+    #ignore version numbers and just keep importing the original file.
+#When you copy and paste the filepath, do not put a slash at the end. 
+#You cannot have punctuation or special characters in your shader name.
+    
+#Let me know if you have questions, or if you find any bugs! Happy shading!
+    #-Anna (a.hales579@gmail.com)
+
+#get name of new shader
+userShaderName = hou.ui.readInput("enter the name of your new shader: ",buttons=("okay","close",)
+,default_choice=0,title="shader network setup tool")
+
+shaderName = userShaderName[1]
+
+shaderName = shaderName.replace(" ","_")
+
+if (userShaderName[0] == 1):
+    quit()
+    
+pxrMaterialBuilder = hou.node("mat").createNode("pxrmaterialbuilder",shaderName+"_MAT")
+
+outputCollect = hou.node("mat/"+shaderName+"_MAT/output_collect")
+
+#create pxrSurface and wire into output_collect
+pxrSurface = hou.node("mat/"+shaderName+"_MAT").createNode("pxrsurface")
+outputCollect.setInput(0,pxrSurface,0)
+
+#determine network type
+networkType = hou.ui.displayMessage("What kind of shader network do you want to create?",
+buttons=("pxrtexture with imported files","blank pxrtexture","primvar"),default_choice=0,
+title="create shader network")
+
+if (networkType == 0 or networkType == 1):
+    #CREATE BASE PXRTEXTURE NETWORK
+    #diffuse color
+    diffuseColor = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","diffuse_color_pxrtexture")
+    diffuseColor.parm("linearize").set(1)
+    pxrSurface.setInput(2,diffuseColor,0)
+    
+    #specular face color
+    specFaceColor = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","spec_face_color_pxrtexture")
+    specFaceColor.parm("linearize").set("1")
+    pxrSurface.setInput(9,specFaceColor,0)
+    
+    #specular roughness
+    specRoughness = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","spec_roughness_pxrtexture")
+    pxrSurface.setInput(14,specRoughness,1)
+    
+    #normal 
+    normal = hou.node("/mat/"+shaderName+"_MAT").createNode("pxrnormalmap","normal_map")
+    pxrSurface.setInput(99,normal,0)
+    
+    #displacement
+    pxrDisplace = hou.node("mat/"+shaderName+"_MAT").createNode("pxrdisplace")
+    #note: this is just a starting place. you'll likely have to adjust it manually furthur)
+    pxrDisplace.parm("dispAmount").set("0.015")
+    outputCollect.setInput(1,pxrDisplace,0)
+    
+    pxrDispTransform = hou.node("mat/"+shaderName+"_MAT").createNode("pxrdisptransform")
+    #this is assuming your displacement map has a midpoint of 0.5 
+    #(which if you're using substance painter usually it will)
+    pxrDispTransform.parm("dispRemapMode").set("2")
+    pxrDisplace.setInput(1,pxrDispTransform,1)
+    
+    displacement = hou.node("mat/"+shaderName+"_MAT").createNode("pxrtexture","displacement_pxrtexture")
+    pxrDispTransform.setInput(0,displacement,1)
+
+    #layout nodes
+    hou.node("mat/"+shaderName+"_MAT").layoutChildren()
+    
+    if(networkType == 1):
+        hou.node("mat/"+shaderName+"_MAT").layoutChildren()
+        hou.ui.displayMessage("Done!",buttons=("hooray",),default_choice=0)
+        
+    elif (networkType == 0):
+        #IMPORT FILES        
+        #get ABSOLUTE filepath
+        userInput = hou.ui.readInput("Copy and paste the path to the folder where you saved your " + 
+        "texture files: ",buttons=("okay","close",),default_choice=0,title="import texture files")
+        
+        if (userInput[0] == 1):
+            quit()
+        absoluteFilePath = userInput[1]
+        
+        #print ("unmodified absolute filepath is: " + absoluteFilePath)
+        #change forward slashes to backslashes 
+        absoluteFilePath = absoluteFilePath.replace("\\","/")
+        #print("corrected absolute filepath is: " + absoluteFilePath)
+        
+        #get RELATIVE filepath
+        userInput = hou.ui.readInput("What is the relative filepath where you saved your textures?" 
+        + "(ex. \"$HIP/tex/character_textures\"",buttons=("okay","close",),default_choice=0,
+        title="import texture files")
+        
+        if (userInput[0] == 1):
+            quit()
+        relativeFilePath = userInput[1]
+        
+        #print ("unmodified relative filepath is: " + relativeFilePath)
+        #change forward slashes to backslashes 
+        relativeFilePath = relativeFilePath.replace("\\","/")
+        #print("corrected relative filepath is: " + relativeFilePath)
+        
+        fileFormatNum = hou.ui.displayMessage("What file format did you use to save your texture " + 
+        "files?",buttons=(".png",".jpg",".tif","close",),default_choice=0,title="import texture files")
+        
+        if(fileFormatNum == 0):
+            fileFormat = ".png"
+        elif(fileFormatNum == 1):
+            fileFormat = ".jpg"
+        elif(fileFormatNum == 2):
+            fileFormat = ".tif"
+        elif(fileFormatNum == 3):
+            quit()
+            
+        userInput = hou.ui.readInput("What is the base name of your texture files for this shader?",buttons=("okay",
+        "close",),default_choice=0,title="import texture files")
+        if (userInput[0] == 1):
+            quit()
+        fileBaseName = userInput[1]
+            
+        textureFolder = os.listdir(filePath)
+        #print ("texture Folder = " + str(textureFolder))
+        
+        def ImportTextureFile(baseName, folder, mapTypeNode, mapTypeString, format):
+            for file in folder:
+                if file.startswith(baseName):
+                    if file.endswith(mapTypeString+format):
+                        #print ("importing the following file: " + str(file))
+                        fullFilePath = filePath + "/" + str(file)
+                        #print ("full file path is as follows: " + fullFilePath)
+                        #mapTypeNode.parm("filename").set(fullFilePath)
+                        #FIXME TESTING - relative reference
+                        mapTypeNode.parm("filename").set(relativeFilePath + "/" + file)
+                    
+        ImportTextureFile(fileBaseName, textureFolder, diffuseColor, "DiffuseColor", fileFormat)
+        ImportTextureFile(fileBaseName, textureFolder, specFaceColor, "SpecularFaceColor", fileFormat)
+        ImportTextureFile(fileBaseName, textureFolder, specRoughness, "SpecularRoughness", fileFormat)
+        ImportTextureFile(fileBaseName, textureFolder, displacement, "Displacement", fileFormat)
+        ImportTextureFile(fileBaseName, textureFolder, normal, "Normal", fileFormat)
+        
+        hou.ui.displayMessage("Done!",buttons=("hooray",),default_choice=0)
+    
+#primvar
+elif (networkType == 2):
+    #diffuse color
+    diffuseColor = hou.node("mat/"+shaderName+"_MAT").createNode("pxrprimvar","diffuse_color_pxrprimvar")
+    diffuseColor.parm("varname").set("Cd")
+    diffuseColor.parm("type").set("color")
+    diffuseColor.parm("defaultColorr").set("0.30981597304344177")
+    diffuseColor.parm("defaultColorg").set("0.62290799617767334")
+    diffuseColor.parm("defaultColorb").set("0.93599998950958252")
+    pxrSurface.setInput(2,diffuseColor,0)
+
+    #layout nodes
+    hou.node("mat/"+shaderName+"_MAT").layoutChildren()
+    
+    hou.ui.displayMessage("Done! Remember, in order for this type of network to work, you will need to go to " +
+    "the OBJ context, select the geometry node that will use this shader, and then click the \"AddSpareParameters\" " +
+    "button (fifth one from the left).",buttons=("oh rad, i will definitely do that",),default_choice=0)
