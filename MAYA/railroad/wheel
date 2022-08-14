@@ -1,0 +1,39 @@
+import maya.cmds as mc
+
+WHEEL_HEIGHT = 3.5
+WHEEL_WIDTH = WHEEL_HEIGHT/12.0
+PIPE_THICKNESS = WHEEL_HEIGHT/13.0
+
+def CreateWheel(leftOrRight):
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,n="wheelInner")
+    mc.polyPipe(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,t=PIPE_THICKNESS,n="wheelOuter")
+    mc.move(WHEEL_WIDTH*0.75*leftOrRight,0,0)
+    wheelBase = mc.polyUnite("wheelInner","wheelOuter",n="wheelBase",ch=0)
+    if (leftOrRight==-1):
+        mc.select(wheelBase[0]+".f[21]")
+    elif(leftOrRight==1):
+        mc.select(wheelBase[0]+".f[20]")
+    mc.scale(0.75,0.75,0.75,r=1)
+    mc.move(-(leftOrRight)*0.5,0,0,r=1)
+    
+    #centroid
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/10.0,h=WHEEL_WIDTH/2.0,n="centroid")
+    mc.move(leftOrRight*WHEEL_WIDTH/2,0,0,r=1)
+    
+    #spokes
+    spokeWidth = 0.05
+    spokeLength = 1.5
+    spokeHeight = 0.15
+    
+    spokes = []
+    numSpokes = 12
+    for spoke in range(0,numSpokes):
+        curSpoke = mc.polyCube(w=spokeWidth, h=spokeHeight, d=spokeLength,n="spoke1")
+        mc.move(leftOrRight*WHEEL_WIDTH/2,0,spokeLength/2,r=1)
+        mc.move(0,0,0,curSpoke[0]+".scalePivot", curSpoke[0]+".rotatePivot")
+        mc.rotate(360.0/numSpokes*spoke,0,0)
+        spokes.append(curSpoke[0])
+    mc.polyUnite(spokes,n="spokes",ch=0)
+    
+    wheel = mc.polyUnite("wheelBase","centroid","spokes",n="wheel1",ch=0)
+    return wheel[0]

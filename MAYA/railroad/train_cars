@@ -1,0 +1,199 @@
+import maya.cmds as mc
+import random as r 
+
+WHEEL_HEIGHT = 3.5
+WHEEL_WIDTH = WHEEL_HEIGHT/12.0
+PIPE_THICKNESS = WHEEL_HEIGHT/13.0
+
+
+CAR_WIDTH = 10.0
+CAR_HEIGHT = 10.0
+CONNECTOR_LENGTH = 2.0
+CONNECTOR_WIDTH = 0.75
+CONNECTOR_HEIGHT = 0.75
+#default values 
+DEFAULT_CAR_LENGTH = 25.0
+
+
+def CreateWheel(leftOrRight):
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,n="wheelInner")
+    mc.polyPipe(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,t=PIPE_THICKNESS,n="wheelOuter")
+    mc.move(WHEEL_WIDTH*0.75*leftOrRight,0,0)
+    wheelBase = mc.polyUnite("wheelInner","wheelOuter",n="wheelBase",ch=0)
+    if (leftOrRight==-1):
+        mc.select(wheelBase[0]+".f[21]")
+    elif(leftOrRight==1):
+        mc.select(wheelBase[0]+".f[20]")
+    mc.scale(0.75,0.75,0.75,r=1)
+    mc.move(-(leftOrRight)*0.5,0,0,r=1)
+    
+    #centroid
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/10.0,h=WHEEL_WIDTH/2.0,n="centroid")
+    mc.move(leftOrRight*WHEEL_WIDTH/2,0,0,r=1)
+    
+    #spokes
+    spokeWidth = 0.05
+    spokeLength = 1.5
+    spokeHeight = 0.15
+    
+    spokes = []
+    numSpokes = 12
+    for spoke in range(0,numSpokes):
+        curSpoke = mc.polyCube(w=spokeWidth, h=spokeHeight, d=spokeLength,n="spoke1")
+        mc.move(leftOrRight*WHEEL_WIDTH/2,0,spokeLength/2,r=1)
+        mc.move(0,0,0,curSpoke[0]+".scalePivot", curSpoke[0]+".rotatePivot")
+        mc.rotate(360.0/numSpokes*spoke,0,0)
+        spokes.append(curSpoke[0])
+    mc.polyUnite(spokes,n="spokes",ch=0)
+    
+    wheel = mc.polyUnite("wheelBase","centroid","spokes",n="wheel1",ch=0)
+    return wheel[0]
+
+def CreateWheelSet(numWheels,leftOrRight,wheelMult,wheelDistVal):
+    trackHeight = 1
+    distBtwWheels = WHEEL_WIDTH + wheelDistVal*wheelMult
+
+    wheels = []
+    for wheel in range(0,numWheels):
+        curWheel = CreateWheel(leftOrRight)
+        mc.scale(1,wheelMult,wheelMult)
+        #mc.move(-(-leftOrRight)*CAR_WIDTH/2.0-CAR_WIDTH/75.0,0,-(wheel*(carLength/numWheels)),r=1)
+        mc.move(-(-leftOrRight)*CAR_WIDTH/2.0-CAR_WIDTH/75.0,0,wheel*distBtwWheels,r=1)
+        wheels.append(curWheel)
+    if(leftOrRight == -1):
+        wheels = mc.group(wheels,n="leftWheels")
+    if(leftOrRight == 1):
+        wheels = mc.group(wheels,n="rightWheels")
+    
+    return wheels
+    
+
+def CreateBoxCar(carLength = DEFAULT_CAR_LENGTH):
+    wheelMult = carLength/30
+    boxCarWidth = CAR_WIDTH * 1.3
+    boxCarHeight = 1.25*CAR_HEIGHT
+    trackHeight = 1
+    
+    car = mc.polyCube(w=boxCarWidth,h=boxCarHeight,d=carLength,sx=CAR_WIDTH,sy=boxCarHeight,sz=carLength,n="boxCarBody")
+    mc.move(0,(boxCarHeight/2+WHEEL_HEIGHT),0,r=1)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=carLength/15.0,d=carLength-carLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT,0,r=1)
+    
+    numWheels = 4
+    leftWheels = CreateWheelSet(numWheels,-1,wheelMult,5)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/3.5,r=1)
+    rightWheels = CreateWheelSet(numWheels,1,wheelMult,5)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/3.5,r=1)
+
+    boxCar = mc.group(car,axelBox,leftWheels,rightWheels,n="boxCar1")
+    
+    return boxCar
+
+def CreateTankCar(carLength = DEFAULT_CAR_LENGTH):
+    trackHeight = 1
+    wheelMult = carLength/30
+    
+    tankCarWidth = CAR_WIDTH * 1.5
+    car = mc.polyCylinder(ax=[0,0,1],r=(tankCarWidth/2),h=carLength,n="tankCarBody")
+    mc.move(0,(CAR_HEIGHT/2+WHEEL_HEIGHT+1.5),0,r=1)
+    
+    #cap thingy
+    cap = mc.polyCylinder(ax=[0,1,0],r=carLength/8.0,h=carLength/8.0,n="cap")
+    mc.move(0,CAR_HEIGHT*1.75,0)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=carLength/15.0,d=carLength-carLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT,0,r=1)
+    
+    numWheels = 2
+    wheelMult = carLength/30
+    leftWheelsFront = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+    rightWheelsFront = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+        
+    leftWheelsBack = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+    rightWheelsBack = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+
+    tankCar = mc.group(car,leftWheelsFront,rightWheelsFront,leftWheelsBack,rightWheelsBack,cap,axelBox,n="tankCar1")
+
+    return tankCar
+        
+def CreateGondolaCar(carLength = DEFAULT_CAR_LENGTH):
+    SCALING_FACTOR = 6.0
+    GONDOLA_HEIGHT = CAR_HEIGHT/SCALING_FACTOR
+    car = mc.polyCube(w=CAR_WIDTH,h=GONDOLA_HEIGHT,d=carLength,sx=CAR_WIDTH/1.5,sz=carLength/1.5,n="gondolaCar1")
+    mc.move(0,((GONDOLA_HEIGHT/2)+WHEEL_HEIGHT),0)
+    
+    #mc.polyExtrudeFacet(car[0]+".f[119:125]",kft=1,t=(0,1,0))
+    #mc.polyExtrudeFacet(car[0]+".f[7:13]",kft=1,t=(0,1,0))
+
+    for face in range(07,98,7):
+        mc.select(car[0]+".f["+str(face)+"]")
+        mc.move(0,1,0,r=1)
+        
+#FIXME this part is still broken lol
+        
+    for face in range(13,91,7):
+        mc.select(car[0]+".f["+str(face)+"]")
+        mc.move(0,1,0,r=1)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=carLength/15.0,d=carLength-carLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT,0,r=1)
+    
+    numWheels = 2
+    wheelMult = carLength/30
+    trackHeight = 1
+    leftWheelsFront = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+    rightWheelsFront = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+        
+    leftWheelsBack = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+    rightWheelsBack = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+    
+
+    gondolaCar = mc.group(car,axelBox,leftWheelsFront,rightWheelsFront,leftWheelsBack,rightWheelsBack,n="gondolaCar1")
+    mc.polySetToFaceNormal(su=1)
+    return gondolaCar
+
+def CreateCar(carType, carLength=DEFAULT_CAR_LENGTH):
+    if(carType == 1):
+        return CreateBoxCar(carLength)
+    elif(carType == 2):
+        return CreateTankCar(carLength)
+    elif(carType == 3):
+        return CreateGondolaCar(carLength)
+        
+def CreateConnector(connectorLength = CONNECTOR_LENGTH):
+    connector = mc.polyCube(w=CONNECTOR_WIDTH,h=CONNECTOR_HEIGHT,d=CONNECTOR_LENGTH,n="connector1")
+    #FIXME - TEMP
+    connector = connector[0]
+    return connector[0]
+
+
+##############################################################
+#main
+#if i end up having user choose length,make sure to cast the user input number to a double so it doesnt mess up division someplace >:o
+
+carLength = 20.0
+
+cars = []
+NUM_CARS = 10
+for car in range(0, NUM_CARS):
+    randomCarType = r.randint(1,NUM_CAR_TYPES)
+    print randomCarType
+    curCar = CreateCar(randomCarType, carLength)
+    mc.move(0,0,(carLength+CONNECTOR_LENGTH)*car,r=1)
+    print curCar
+    cars.append(curCar)
+print cars
+
+cars.insert(0,mc.group(cars,n="cars"))

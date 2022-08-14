@@ -1,0 +1,28 @@
+import maya.cmds as mc
+
+wallWidth = int(raw_input())
+wallHeight = int(raw_input())
+
+NUM_LAYERS = wallHeight
+BRICK_LENGTH = 4
+BRICK_HEIGHT = 1
+MORTAR_SPACE = 0.1
+
+NUM_BRICKS = wallWidth*BRICK_HEIGHT
+
+layers = []
+for layer in range(0,NUM_LAYERS):
+    bricks = []
+    for brick in range(0,NUM_BRICKS):
+        curBrick = mc.polyCube(w=1,h=BRICK_HEIGHT,d=BRICK_LENGTH,n="brick1")
+        mc.move(0,0,((BRICK_LENGTH+MORTAR_SPACE)*brick))
+        bricks.append(curBrick[0])
+    curLayer = mc.group(bricks,n="layer1")
+    print curLayer
+    mc.move(0,(BRICK_HEIGHT+MORTAR_SPACE)*layer,0)
+    #if layer number is even, offset bricks
+    if(layer%2==0):
+        mc.move(0,0,BRICK_LENGTH/2,r=1)
+    layers.append(curLayer)
+    print layers
+mc.group(layers,n="wall")

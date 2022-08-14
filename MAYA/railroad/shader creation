@@ -1,0 +1,39 @@
+import maya.cmds as mc
+import mtoa.core as core
+
+def CleanUpHypershade(shadersToDelete):
+    if(mc.objExists(shadersToDelete[0])):
+        mc.delete(shadersToDelete[0])
+        mc.delete(shadersToDelete[0]+"SG")
+
+def CreateShader(colorName="no color", rgbVals = [0,0,0]):
+    if not mc.objExists(colorName):
+        newShader = core.createArnoldNode("aiStandardSurface",name=colorName)
+        mc.setAttr(newShader+".baseColor", rgbVals[0],rgbVals[1],rgbVals[2])
+        mc.setAttr(newShader+".base",1)
+        return newShader
+    else:
+        print "A shader named "+str(colorName)+" already exists; new shader not created. Existing shader will be used."
+        return colorName
+
+##main##
+shaderList = []
+
+orangeShader = CreateShader("orange", [0.427,0.060,0.022])
+shaderList.append(orangeShader)
+
+navyShader = CreateShader("navy", [0.0,0.047,0.254])
+shaderList.append(navyShader)
+
+
+for cube in range (0,10):
+    curCube = mc.polyCube(n="myCube"+str(cube+1))
+    mc.move(0,0,2*cube)
+    if (cube%2==0):
+        mc.hyperShade(assign = orangeShader)
+        #mc.select("pCube"+str(cube+1))
+        #mc.move(0,1,0,r=1)
+        #mc.sets(cube, em=1, forceElement=curCube[0]+"SG")
+        #mc.hyperShade(assign = orange)
+    else:
+        mc.hyperShade(assign = navyShader)

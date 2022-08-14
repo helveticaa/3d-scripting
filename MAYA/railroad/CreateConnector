@@ -1,0 +1,41 @@
+import maya.cmds as mc
+import random as r 
+
+WHEEL_HEIGHT = 3.5
+WHEEL_WIDTH = WHEEL_HEIGHT/12.0
+PIPE_THICKNESS = WHEEL_HEIGHT/13.0
+
+CAR_WIDTH = 10.0
+CAR_HEIGHT = 10.0
+CONNECTOR_WIDTH = 0.5
+CONNECTOR_HEIGHT = 0.75
+#default values
+DEFAULT_CAR_LENGTH = 20.0
+DEFAULT_LOCOMOTIVE_LENGTH = 35.0
+NUM_CAR_TYPES = 3.0
+DEFAULT_CONNECTOR_LENGTH = 2.0
+
+def CreateConnector(distBtwCars = DEFAULT_CONNECTOR_LENGTH):
+    #connector = mc.polyCube(w=CONNECTOR_WIDTH,h=CONNECTOR_HEIGHT,d=DEFAULT_CONNECTOR_LENGTH,n="connector1")
+    connectorLength = distBtwCars*(3.0/8.0)
+    connectorBase = mc.polyCube(w=CONNECTOR_WIDTH,h=CONNECTOR_HEIGHT,d=connectorLength,sz=2,n="connectorBase")
+    mc.polyExtrudeFacet(connectorBase[0]+".f[7]",kft=1,ltz=connectorLength/3.0)
+    mc.select(connectorBase[0]+".f[7]")
+    mc.move(0,0,connectorLength/2.0,r=1)
+    mc.polyExtrudeFacet(connectorBase[0]+".f[9]",kft=1,ltz=connectorLength/3.0)
+    mc.select(connectorBase[0]+".f[9]")
+    mc.move(0,0,connectorLength/2.0,r=1)
+    mc.polyCube(w=CONNECTOR_WIDTH/2.0,h=CONNECTOR_HEIGHT,d=connectorLength/2.0,n="connectorPt2")
+    mc.move(-CONNECTOR_WIDTH*0.75,0,connectorLength,r=1)
+    mc.polyCube(w=CONNECTOR_WIDTH/2.0,h=CONNECTOR_HEIGHT,d=connectorLength/2.0,n="connectorPt3")
+    mc.move(CONNECTOR_WIDTH*0.75,0,connectorLength)
+    mc.polyCube(w=CONNECTOR_WIDTH/2.0,h=CONNECTOR_HEIGHT,d=connectorLength/2.0,n="connectorPt3")
+    mc.move(-CONNECTOR_WIDTH*0.25,0,connectorLength,r=1)
+    connectorHalf1 = mc.polyUnite("connectorBase","connectorPt2","connectorPt3",n="connectorHalf1",ch=0)
+
+    
+   #mc.polyExtrudeFacet(car[0]+".f[119:125]",kft=1,t=(0,1,0))
+
+   #return connector
+    
+CreateConnector()

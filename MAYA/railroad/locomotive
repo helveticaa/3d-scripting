@@ -1,0 +1,191 @@
+#create locomotive function
+import maya.cmds as mc
+import random as r 
+
+WHEEL_HEIGHT = 3.5
+WHEEL_WIDTH = WHEEL_HEIGHT/12.0
+PIPE_THICKNESS = WHEEL_HEIGHT/13.0
+
+CAR_WIDTH = 10.0
+CAR_HEIGHT = 10.0
+CONNECTOR_LENGTH = 2.0
+CONNECTOR_WIDTH = 0.75
+CONNECTOR_HEIGHT = 0.75
+#default values
+DEFAULT_CAR_LENGTH = 20.0
+DEFAULT_LOCOMOTIVE_LENGTH = 35.0
+NUM_CAR_TYPES = 3.0
+
+def CreateWheel(leftOrRight):
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,n="wheelInner")
+    mc.polyPipe(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,t=PIPE_THICKNESS,n="wheelOuter")
+    mc.move(WHEEL_WIDTH*0.75*leftOrRight,0,0)
+    wheelBase = mc.polyUnite("wheelInner","wheelOuter",n="wheelBase",ch=0)
+    if (leftOrRight==-1):
+        mc.select(wheelBase[0]+".f[21]")
+    elif(leftOrRight==1):
+        mc.select(wheelBase[0]+".f[20]")
+    mc.scale(0.75,0.75,0.75,r=1)
+    mc.move(-(leftOrRight)*0.5,0,0,r=1)
+    
+    #centroid
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/10.0,h=WHEEL_WIDTH/2.0,n="centroid")
+    mc.move(leftOrRight*WHEEL_WIDTH/2,0,0,r=1)
+    
+    #spokes
+    spokeWidth = 0.05
+    spokeLength = 1.5
+    spokeHeight = 0.15
+    
+    spokes = []
+    numSpokes = 12
+    for spoke in range(0,numSpokes):
+        curSpoke = mc.polyCube(w=spokeWidth, h=spokeHeight, d=spokeLength,n="spoke1")
+        mc.move(leftOrRight*WHEEL_WIDTH/2,0,spokeLength/2,r=1)
+        mc.move(0,0,0,curSpoke[0]+".scalePivot", curSpoke[0]+".rotatePivot")
+        mc.rotate(360.0/numSpokes*spoke,0,0)
+        spokes.append(curSpoke[0])
+    mc.polyUnite(spokes,n="spokes",ch=0)
+    
+    wheel = mc.polyUnite("wheelBase","centroid","spokes",n="wheel1",ch=0)
+    return wheel[0]
+    
+def CreateLocomotive(locomotiveLength = DEFAULT_LOCOMOTIVE_LENGTH):
+    carHeightDivisor = 1.25
+    #body
+    wheelMult = locomotiveLength/30
+    body = mc.polyCylinder(ax=[0,0,1],r=((CAR_WIDTH+(CAR_WIDTH/4.0))/2),h=locomotiveLength,n="body")
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),0,r=1)
+    
+    #boilder plate
+    boilerPlateDivisor = locomotiveLength/11.667
+    boilerPlate = mc.polyCylinder(ax=[0,0,1],r=(CAR_WIDTH/boilerPlateDivisor),h=1,n="boilerPlate")
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),-locomotiveLength/2,r=1)
+
+    #headlamp
+    headlampDivisor = locomotiveLength/3.5
+    mc.polyCylinder(ax=[0,0,1],r=(CAR_WIDTH/headlampDivisor),h=1,n="headlight")
+    mc.polyPipe(ax=[0,0,1],r=(CAR_WIDTH/headlampDivisor),h=1,t=PIPE_THICKNESS,n="headlampCone")
+    mc.move(0,0,-0.5)
+    headlamp = mc.polyUnite("headlight","headlampCone",n="headlamp",ch=0)
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),-((locomotiveLength+1)/2),r=1)
+    
+    #cab
+    cabDepth = locomotiveLength/3.0
+    cabHeight = locomotiveLength/3.5
+    cabWidth = locomotiveLength/3.0
+    cabRoofScale = locomotiveLength/16.667
+        
+    mc.polyCube(w=cabWidth,h=cabHeight,d=cabDepth,n="cabBody")
+    mc.polyCylinder(ax=[0,0,1],r=(cabWidth/2.0+0.3),h=cabDepth,n="cabRoof")
+    mc.move(0,cabHeight/2.0,0,r=1)
+    
+    mc.scale(1,locomotiveLength/116.667)
+    cab = mc.polyUnite("cabBody","cabRoof",n="cab",ch=0)
+    mc.move(0,(cabHeight),locomotiveLength/2-cabDepth/2,r=1)
+    
+    #smokestack
+    smokestackHeight = locomotiveLength/7.0
+    smokestackWidth = locomotiveLength/11.667
+    
+    mc.polyCylinder(ax=[0,1,0],r=smokestackWidth/2,h=smokestackHeight,n="smokestackTube")
+    mc.polyPipe(ax=[0,1,0],r=(smokestackWidth/2+smokestackWidth*0.05),h=smokestackHeight/6,t=PIPE_THICKNESS*1.25,n="smokestackCap")
+    
+    mc.move(0,smokestackHeight/2.0,0)
+    
+    smokestack = mc.polyUnite("smokestackTube","smokestackCap",n="smokestack",ch=0)
+    mc.move(0,(CAR_HEIGHT+smokestackHeight),-locomotiveLength/3,r=1)    
+    
+    #front nails
+    nailWidth = locomotiveLength/100.0
+    nailHeight = locomotiveLength/80.0
+    nailHeads = []
+    numNailHeads = 28
+    for nailHead in range(0,numNailHeads):
+        curNailHead = mc.polyCylinder(ax=[0,1,0],r=nailWidth/2,h=nailHeight,n="nailHead1")
+        mc.move(CAR_WIDTH/boilerPlateDivisor+boilerPlateDivisor/2.0)
+        mc.move(0,0,0,curNailHead[0]+".scalePivot", curNailHead[0]+".rotatePivot")
+        mc.rotate(0,360.0/numNailHeads*nailHead,0)
+        nailHeads.append(curNailHead[0])
+    nailHeads = mc.group(nailHeads,n="nailHeads")
+    mc.rotate(90,0,0)
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),-locomotiveLength/2,r=1)
+    
+    #body details
+    mc.polyPipe(ax=[0,0,1],r=((CAR_WIDTH+CAR_WIDTH/3.5)/2),h=locomotiveLength/100,t=PIPE_THICKNESS/2.0,n="bodyDetail1")
+    mc.move(0,0,-((locomotiveLength-locomotiveLength/60.0)/2),r=1)
+    
+    mc.polyPipe(ax=[0,0,1],r=((CAR_WIDTH+CAR_WIDTH/3.5)/2),h=locomotiveLength/25,t=PIPE_THICKNESS,n="bodyDetail2")
+    mc.move(0,0,-((locomotiveLength-locomotiveLength/30.0)/4),r=1)
+    
+    mc.duplicate(n="bodyDetail2")
+    mc.move(0,0,locomotiveLength/4.0,r=1)
+    
+    engineBodyDetails = mc.polyUnite("bodyDetail*",n="engineBodyDetails",ch=0)
+    mc.move(0,CAR_HEIGHT/carHeightDivisor,0,r=1)
+    
+    #wheel cover
+    wheelCover = mc.polyCube(w=cabWidth+cabWidth/15.0,h=locomotiveLength/40.0,d=locomotiveLength/2.0,n="wheelCover")
+    mc.move(0,cabHeight/1.85,locomotiveLength/4.0,r=1)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=locomotiveLength/15.0,d=locomotiveLength-locomotiveLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT/5.0,0,r=1)
+    
+    #front wheels
+    numWheels = 2
+    
+    leftWheels = []
+    for leftWheel in range(0,numWheels):
+        curLeftWheel = CreateWheel(-1)
+        mc.scale(wheelMult, wheelMult, wheelMult)
+        mc.move(-(CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-leftWheel*WHEEL_HEIGHT*2.0,r=1)
+        leftWheels.append(curLeftWheel)
+        #NOTE TO SELF remember to append the WHOLE THING bc my custom wheel function returns just the name not the list!!
+        #lol maybe i played myself here hmm
+    leftWheels = mc.polyUnite(leftWheels,n="leftWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/13.0,locomotiveLength/-5.0)
+    
+    
+    rightWheels = []
+    for rightWheel in range(0,numWheels):
+        curRightWheel = CreateWheel(1)
+        mc.scale(wheelMult, wheelMult, wheelMult)
+        mc.move((CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-rightWheel*WHEEL_HEIGHT*2.0,r=1)
+        rightWheels.append(curRightWheel)
+    rightWheels = mc.polyUnite(rightWheels,n="rightWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/13.0,locomotiveLength/-5.0)
+    
+    backLeftWheels = []
+    for backLeftWheel in range(0,numWheels):
+        curbackLeftWheel = CreateWheel(-1)
+        mc.scale(1, wheelMult*1.5, wheelMult*1.5)
+        mc.move(-(CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-backLeftWheel*WHEEL_HEIGHT*2.0,r=1)
+        backLeftWheels.append(curbackLeftWheel)
+    backLeftWheels = mc.polyUnite(backLeftWheels,n="backLeftWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/2.75,locomotiveLength/3.0,r=1)
+    
+    
+    backRightWheels = []
+    for backRightWheel in range(0,numWheels):
+        curbackRightWheel = CreateWheel(1)
+        mc.scale(1, wheelMult*1.5, wheelMult*1.5)
+        mc.move((CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-backRightWheel*WHEEL_HEIGHT*2.0,r=1)
+        backRightWheels.append(curbackRightWheel)
+    backRightWheels = mc.polyUnite(backRightWheels,n="backRightWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/2.75,locomotiveLength/3.0,r=1)
+
+
+    #note to self: group the actual objects (not object[0] because the polyUnite command returns the object, not the list with the names)
+    locomotive = mc.group(body,boilerPlate,headlamp,cab,smokestack,nailHeads,engineBodyDetails,wheelCover,axelBox,leftWheels,rightWheels,backLeftWheels,backRightWheels,n="locomotive")
+    
+    mc.move(0,(WHEEL_HEIGHT/1.5)*wheelMult,0,r=1)
+    
+    return locomotive[0]
+
+    
+    
+#main
+#kinda
+
+CreateLocomotive()

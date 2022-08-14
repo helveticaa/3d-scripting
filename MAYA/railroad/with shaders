@@ -1,0 +1,518 @@
+import maya.cmds as mc
+import random as r 
+import mtoa.core as core
+
+WHEEL_HEIGHT = 3.5
+WHEEL_WIDTH = WHEEL_HEIGHT/12.0
+PIPE_THICKNESS = WHEEL_HEIGHT/13.0
+
+CAR_WIDTH = 10.0
+CAR_HEIGHT = 10.0
+CONNECTOR_WIDTH = 0.5
+
+#default values
+DEFAULT_CONNECTOR_LENGTH = 2.0  
+DEFAULT_CAR_LENGTH = 20.0
+DEFAULT_LOCOMOTIVE_LENGTH = 35.0
+NUM_CAR_TYPES = 3.0
+
+########### SHADER CREATION FUNCTIONS ###########
+def CreateShader(colorName="no color", rgbVals = [0,0,0]):
+    if not mc.objExists(colorName):
+        newShader = core.createArnoldNode("aiStandardSurface",name=colorName)
+        mc.setAttr(newShader+".baseColor", rgbVals[0],rgbVals[1],rgbVals[2])
+        mc.setAttr(newShader+".base",1)
+        return newShader
+    else:
+        print "A shader named "+str(colorName)+" already exists; new shader not created. Existing shader will be used."
+        return colorName
+        
+########### main for shader creation ###########
+shaderList = []
+
+#track shaders
+railShader = CreateShader("rail_MAT",[0.110,0.144,0.193])
+shaderList.append(railShader)
+
+sleeperShader = CreateShader("sleeper_MAT", [0.207,0.128,0.081])
+shaderList.append(sleeperShader)
+
+#box shaders 
+orangeShader = CreateShader("orange_MAT", [0.427,0.060,0.022])
+shaderList.append(orangeShader)
+
+navyShader = CreateShader("navy_MAT", [0.0,0.047,0.254])
+shaderList.append(navyShader)
+
+tanShader = CreateShader("tan_MAT",[1.0,0.817,0.511])
+shaderList.append(tanShader)
+
+#general shaders
+axelBoxShader = CreateShader("axelBox_MAT",[0,0.022,0.077])
+shaderList.append(axelBoxShader)
+
+nailAndPlateShader = CreateShader("nailAndPlate_MAT", [0.287,0.430,0.504])
+shaderList.append(nailAndPlateShader)
+
+wheelShader = CreateShader("wheel_MAT", [0.202,0.283, 0.312])
+shaderList.append(wheelShader)
+
+#locomotive shaders
+locoBodyShader = CreateShader("locoBody_MAT",[0.038,0.078,0.107])
+shaderList.append(locoBodyShader)
+
+locoMetalShader = CreateShader("locoMetalShader_MAT",[0.552,0.659,0.760])
+shaderList.append(locoMetalShader)
+
+    
+########### GEP CREATION FUNCTIONS ###########
+def CreateWheel(leftOrRight):
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,n="wheelInner")
+    mc.polyPipe(ax=[1,0,0],r=WHEEL_HEIGHT/2,h=WHEEL_WIDTH,t=PIPE_THICKNESS,n="wheelOuter")
+    mc.move(WHEEL_WIDTH*0.75*leftOrRight,0,0)
+    wheelBase = mc.polyUnite("wheelInner","wheelOuter",n="wheelBase",ch=0)
+    if (leftOrRight==-1):
+        mc.select(wheelBase[0]+".f[21]")
+    elif(leftOrRight==1):
+        mc.select(wheelBase[0]+".f[20]")
+    mc.scale(0.75,0.75,0.75,r=1)
+    mc.move(-(leftOrRight)*0.5,0,0,r=1)
+    
+    #centroid
+    mc.polyCylinder(ax=[1,0,0],r=WHEEL_HEIGHT/10.0,h=WHEEL_WIDTH/2.0,n="centroid")
+    mc.move(leftOrRight*WHEEL_WIDTH/2,0,0,r=1)
+    
+    #spokes
+    spokeWidth = 0.05
+    spokeLength = 1.5
+    spokeHeight = 0.15
+    
+    spokes = []
+    numSpokes = 12
+    for spoke in range(0,numSpokes):
+        curSpoke = mc.polyCube(w=spokeWidth, h=spokeHeight, d=spokeLength,n="spoke1")
+        mc.move(leftOrRight*WHEEL_WIDTH/2,0,spokeLength/2,r=1)
+        mc.move(0,0,0,curSpoke[0]+".scalePivot", curSpoke[0]+".rotatePivot")
+        mc.rotate(360.0/numSpokes*spoke,0,0)
+        spokes.append(curSpoke[0])
+    mc.polyUnite(spokes,n="spokes",ch=0)
+    
+    wheel = mc.polyUnite("wheelBase","centroid","spokes",n="wheel1",ch=0)
+    mc.hyperShade(assign=wheelShader)
+    return wheel[0]
+
+def CreateWheelSet(numWheels,leftOrRight,wheelMult,wheelDistVal):
+    trackHeight = 1
+    distBtwWheels = WHEEL_WIDTH + wheelDistVal*wheelMult
+
+    wheels = []
+    for wheel in range(0,numWheels):
+        curWheel = CreateWheel(leftOrRight)
+        mc.scale(1,wheelMult,wheelMult)
+        #mc.move(-(-leftOrRight)*CAR_WIDTH/2.0-CAR_WIDTH/75.0,0,-(wheel*(carLength/numWheels)),r=1)
+        mc.move(-(-leftOrRight)*CAR_WIDTH/2.0-CAR_WIDTH/75.0,0,wheel*distBtwWheels,r=1)
+        wheels.append(curWheel)
+    if(leftOrRight == -1):
+        wheels = mc.group(wheels,n="leftWheels")
+    if(leftOrRight == 1):
+        wheels = mc.group(wheels,n="rightWheels")
+    
+    return wheels
+
+def CreateLocomotive(locomotiveLength = DEFAULT_LOCOMOTIVE_LENGTH):
+    carHeightDivisor = 1.25
+    #body
+    wheelMult = locomotiveLength/30
+    body = mc.polyCylinder(ax=[0,0,1],r=((CAR_WIDTH+(CAR_WIDTH/4.0))/2),h=locomotiveLength,n="body")
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),0,r=1)
+    mc.hyperShade(assign = locoBodyShader)
+    
+    #boilder plate
+    boilerPlateDivisor = locomotiveLength/11.667
+    boilerPlate = mc.polyCylinder(ax=[0,0,1],r=(CAR_WIDTH/boilerPlateDivisor),h=1,n="boilerPlate")
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),-locomotiveLength/2,r=1)
+    mc.hyperShade(assign = locoBodyShader)
+
+    #headlamp
+    headlampDivisor = locomotiveLength/3.5
+    mc.polyCylinder(ax=[0,0,1],r=(CAR_WIDTH/headlampDivisor),h=1,n="headlight")
+    mc.polyPipe(ax=[0,0,1],r=(CAR_WIDTH/headlampDivisor),h=1,t=PIPE_THICKNESS,n="headlampCone")
+    mc.move(0,0,-0.5)
+    headlamp = mc.polyUnite("headlight","headlampCone",n="headlamp",ch=0)
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),-((locomotiveLength+1)/2),r=1)
+    mc.hyperShade(assign = locoMetalShader)
+    
+    #cab
+    cabDepth = locomotiveLength/3.0
+    cabHeight = locomotiveLength/3.5
+    cabWidth = locomotiveLength/3.0
+    cabRoofScale = locomotiveLength/16.667
+        
+    mc.polyCube(w=cabWidth,h=cabHeight,d=cabDepth,n="cabBody")
+    mc.polyCylinder(ax=[0,0,1],r=(cabWidth/2.0+0.3),h=cabDepth,n="cabRoof")
+    mc.move(0,cabHeight/2.0,0,r=1)
+    
+    mc.scale(1,locomotiveLength/116.667)
+    cab = mc.polyUnite("cabBody","cabRoof",n="cab",ch=0)
+    mc.move(0,(cabHeight),locomotiveLength/2-cabDepth/2,r=1)
+    mc.hyperShade(assign = locoBodyShader)
+    
+    #smokestack
+    smokestackHeight = locomotiveLength/7.0
+    smokestackWidth = locomotiveLength/11.667
+    
+    mc.polyCylinder(ax=[0,1,0],r=smokestackWidth/2,h=smokestackHeight,n="smokestackTube")
+    mc.polyPipe(ax=[0,1,0],r=(smokestackWidth/2+smokestackWidth*0.05),h=smokestackHeight/6,t=PIPE_THICKNESS*1.25,n="smokestackCap")
+    
+    mc.move(0,smokestackHeight/2.0,0)
+    
+    smokestack = mc.polyUnite("smokestackTube","smokestackCap",n="smokestack",ch=0)
+    mc.hyperShade(assign = locoBodyShader)
+    mc.move(0,(CAR_HEIGHT+smokestackHeight),-locomotiveLength/3,r=1)    
+    
+    #front nails
+    nailWidth = locomotiveLength/100.0
+    nailHeight = locomotiveLength/80.0
+    nailHeads = []
+    numNailHeads = 28
+    for nailHead in range(0,numNailHeads):
+        curNailHead = mc.polyCylinder(ax=[0,1,0],r=nailWidth/2,h=nailHeight,n="nailHead1")
+        mc.move(CAR_WIDTH/boilerPlateDivisor+boilerPlateDivisor/2.0)
+        mc.move(0,0,0,curNailHead[0]+".scalePivot", curNailHead[0]+".rotatePivot")
+        mc.rotate(0,360.0/numNailHeads*nailHead,0)
+        mc.hyperShade(assign=locoMetalShader)
+        nailHeads.append(curNailHead[0])
+    nailHeads = mc.group(nailHeads,n="nailHeads")
+    mc.rotate(90,0,0)
+    mc.move(0,(CAR_HEIGHT/carHeightDivisor),-locomotiveLength/2,r=1)
+    
+    #body details
+    mc.polyPipe(ax=[0,0,1],r=((CAR_WIDTH+CAR_WIDTH/3.5)/2),h=locomotiveLength/100,t=PIPE_THICKNESS/2.0,n="bodyDetail1")
+    mc.move(0,0,-((locomotiveLength-locomotiveLength/60.0)/2),r=1)
+    
+    mc.polyPipe(ax=[0,0,1],r=((CAR_WIDTH+CAR_WIDTH/3.5)/2),h=locomotiveLength/25,t=PIPE_THICKNESS,n="bodyDetail2")
+    mc.move(0,0,-((locomotiveLength-locomotiveLength/30.0)/4),r=1)
+    
+    mc.duplicate(n="bodyDetail2")
+    mc.move(0,0,locomotiveLength/4.0,r=1)
+    
+    engineBodyDetails = mc.polyUnite("bodyDetail*",n="engineBodyDetails",ch=0)
+    mc.move(0,CAR_HEIGHT/carHeightDivisor,0,r=1)
+    mc.hyperShade(assign=locoMetalShader)
+    
+    #wheel cover
+    wheelCover = mc.polyCube(w=cabWidth+cabWidth/15.0,h=locomotiveLength/40.0,d=locomotiveLength/2.0,n="wheelCover")
+    mc.move(0,cabHeight/1.85,locomotiveLength/4.0,r=1)
+    mc.hyperShade(assign=locoMetalShader)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=locomotiveLength/15.0,d=locomotiveLength-locomotiveLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT/5.0,0,r=1)
+    mc.hyperShade(assign = axelBoxShader)
+    
+    #front wheels
+    numWheels = 2
+    
+    leftWheels = []
+    for leftWheel in range(0,numWheels):
+        curLeftWheel = CreateWheel(-1)
+        mc.scale(wheelMult, wheelMult, wheelMult)
+        mc.move(-(CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-leftWheel*WHEEL_HEIGHT*2.0,r=1)
+        leftWheels.append(curLeftWheel)
+
+    leftWheels = mc.polyUnite(leftWheels,n="leftWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/13.0,locomotiveLength/-5.0)
+    
+    rightWheels = []
+    for rightWheel in range(0,numWheels):
+        curRightWheel = CreateWheel(1)
+        mc.scale(wheelMult, wheelMult, wheelMult)
+        mc.move((CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-rightWheel*WHEEL_HEIGHT*2.0,r=1)
+        rightWheels.append(curRightWheel)
+    rightWheels = mc.polyUnite(rightWheels,n="rightWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/13.0,locomotiveLength/-5.0)
+    
+    backLeftWheels = []
+    for backLeftWheel in range(0,numWheels):
+        curbackLeftWheel = CreateWheel(-1)
+        mc.scale(1, wheelMult*1.5, wheelMult*1.5)
+        mc.move(-(CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-backLeftWheel*WHEEL_HEIGHT*2.0,r=1)
+        backLeftWheels.append(curbackLeftWheel)
+    backLeftWheels = mc.polyUnite(backLeftWheels,n="backLeftWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/2.75,locomotiveLength/3.0,r=1)
+    
+    backRightWheels = []
+    for backRightWheel in range(0,numWheels):
+        curbackRightWheel = CreateWheel(1)
+        mc.scale(1, wheelMult*1.5, wheelMult*1.5)
+        mc.move((CAR_WIDTH/2.0-CAR_WIDTH/75.0),0,-backRightWheel*WHEEL_HEIGHT*2.0,r=1)
+        backRightWheels.append(curbackRightWheel)
+    backRightWheels = mc.polyUnite(backRightWheels,n="backRightWheels",ch=0)
+    mc.move(0,WHEEL_HEIGHT/2.75,locomotiveLength/3.0,r=1)
+
+    locomotive = mc.group(body,boilerPlate,headlamp,cab,smokestack,nailHeads,engineBodyDetails,wheelCover,axelBox,leftWheels,rightWheels,backLeftWheels,backRightWheels,n="locomotive")
+    
+    mc.move(0,(WHEEL_HEIGHT/1.5)*wheelMult,0,r=1)
+    
+    return locomotive[0]    
+
+def CreateBoxCar(carLength = DEFAULT_CAR_LENGTH):
+    wheelMult = carLength/30
+    boxCarWidth = CAR_WIDTH * 1.2
+    boxCarHeight = 1.25*CAR_HEIGHT
+    trackHeight = 1
+    
+    car = mc.polyCube(w=boxCarWidth,h=boxCarHeight,d=carLength,n="boxCarBody")
+    mc.move(0,(boxCarHeight/2+WHEEL_HEIGHT),0,r=1)
+    mc.hyperShade(assign = orangeShader)
+
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=carLength/15.0,d=carLength-carLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT,0,r=1)
+    mc.hyperShade(assign = axelBoxShader)
+    
+    #wheels    
+    numWheels = 4
+    leftWheels = CreateWheelSet(numWheels,-1,wheelMult,5)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/3.5,r=1)
+    rightWheels = CreateWheelSet(numWheels,1,wheelMult,5)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/3.5,r=1)
+
+    #side slats
+    sideSlats = []
+    numSlats = 8
+    for slat in range(0,numSlats):
+        slatWidth = carLength/25.0
+        slatDepth = carLength/(numSlats*2.0)
+        curSlat = mc.polyCube(w=slatWidth,h=boxCarHeight,d=slatDepth,n="slat1")
+        mc.move(boxCarWidth/2.0,((boxCarHeight/2.0)+1.5*(WHEEL_HEIGHT*wheelMult)),2*slatDepth*slat,r=1)
+        mc.hyperShade(assign = orangeShader)
+
+        sideSlats.append(curSlat[0])
+        
+    sideSlatsR = mc.group(sideSlats,n="sideSlats")
+    slatsLen = slatDepth * 2.0 * (numSlats-1)
+    mc.move(0,0,-slatsLen/2.0,r=1)
+    
+    sideSlatsL = mc.duplicate()
+    mc.move(-boxCarWidth,0,0,r=1)
+
+    boxCar = mc.group(car,axelBox,leftWheels,rightWheels,sideSlatsR,sideSlatsL[0],n="boxCar1")
+    
+    return boxCar
+
+def CreateTankCar(carLength = DEFAULT_CAR_LENGTH):
+    trackHeight = 1
+    wheelMult = carLength/30
+    
+    tankCarWidth = CAR_WIDTH * 1.5
+    car = mc.polyCylinder(ax=[0,0,1],r=(tankCarWidth/2),h=carLength,n="tankCarBody")
+    mc.move(0,(CAR_HEIGHT/2+WHEEL_HEIGHT+1.5),0,r=1)
+    mc.hyperShade(assign = tanShader)
+    
+    #cap thingy
+    cap = mc.polyCylinder(ax=[0,1,0],r=carLength/8.0,h=carLength/8.0,n="cap")
+    mc.move(0,CAR_HEIGHT*1.75,0)
+    mc.hyperShade(assign = tanShader)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=carLength/15.0,d=carLength-carLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT,0,r=1)
+    mc.hyperShade(assign = axelBoxShader)
+    
+    numWheels = 2
+    wheelMult = carLength/30
+    leftWheelsFront = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+    rightWheelsFront = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+        
+    leftWheelsBack = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+    rightWheelsBack = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+
+    tankCar = mc.group(car,leftWheelsFront,rightWheelsFront,leftWheelsBack,rightWheelsBack,cap,axelBox,n="tankCar1")
+
+    return tankCar
+        
+def CreateGondolaCar(carLength = DEFAULT_CAR_LENGTH):
+    SCALING_FACTOR = 6.0
+    GONDOLA_HEIGHT = CAR_HEIGHT/SCALING_FACTOR
+    
+    car = mc.polyCube(w=CAR_WIDTH,h=GONDOLA_HEIGHT,d=carLength,sx=CAR_WIDTH/1.5,sz=carLength/1.5,n="gondolaCar1")
+    mc.move(0,((GONDOLA_HEIGHT/2)+WHEEL_HEIGHT),0)
+    mc.hyperShade(assign = navyShader)
+    
+    for face in range(07,98,7):
+        mc.select(car[0]+".f["+str(face)+"]")
+        mc.move(0,1,0,r=1)
+        
+#FIXME this part is still broken lol
+    for face in range(13,91,7):
+        mc.select(car[0]+".f["+str(face)+"]")
+        mc.move(0,1,0,r=1)
+    
+    #axel box
+    axelBox = mc.polyCube(w=CAR_WIDTH-CAR_WIDTH/4.0,h=carLength/15.0,d=carLength-carLength/10.0,n="axelBox")
+    mc.move(0,WHEEL_HEIGHT,0,r=1)
+    mc.hyperShade(assign = axelBoxShader)
+    
+    numWheels = 2
+    wheelMult = carLength/30
+    trackHeight = 1
+    leftWheelsFront = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+    rightWheelsFront = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,-carLength/2.75,r=1)
+        
+    leftWheelsBack = CreateWheelSet(numWheels,-1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+    rightWheelsBack = CreateWheelSet(numWheels,1,wheelMult,4)
+    mc.move(0,(WHEEL_HEIGHT*wheelMult)/2.0+trackHeight,carLength/5.250,r=1)
+    
+
+    gondolaCar = mc.group(car,axelBox,leftWheelsFront,rightWheelsFront,leftWheelsBack,rightWheelsBack,n="gondolaCar1")
+    mc.polySetToFaceNormal(su=1)
+    return gondolaCar
+
+def CreateCar(carType, carLength=DEFAULT_CAR_LENGTH):
+    if(carType == 1):
+        return CreateBoxCar(carLength)
+    elif(carType == 2):
+        return CreateTankCar(carLength)
+    elif(carType == 3):
+        return CreateGondolaCar(carLength)
+        
+def CreateConnector(connectorLength = DEFAULT_CONNECTOR_LENGTH):
+    connector = mc.polyCube(w=CONNECTOR_WIDTH,h=CONNECTOR_HEIGHT,d=DEFAULT_CONNECTOR_LENGTH,n="connector1")
+    #FIXME - TEMP
+    connector = connector[0]
+    return connector[0]
+
+##############################################################################################################
+#main
+##############################################################################################################
+userNumCars = int(raw_input())
+
+#FIXME need a better way to figure out how many tracks to lay :/
+NUM_TRACK_SEGS = userNumCars + userNumCars/4 + 2
+NUM_SLEEPERS = 8
+WIDTH_SLEEPERS = 1.3
+LENGTH_SLEEPERS = 13
+SLEEPERS_DIST = 2.5
+TRACK_WIDTH = 10
+LENGTH_RAIL = 20
+
+trackSegs = []
+for trackSegment in range (0,NUM_TRACK_SEGS):
+    #create + instance sleepers
+    sleepers = []
+    for curSleeper in range(0, NUM_SLEEPERS):
+        curSleeperObj = mc.polyCube(w=LENGTH_SLEEPERS, h=0.4, d=WIDTH_SLEEPERS,n="sleeper1")
+
+        ROT_RANGE = 20
+        ROT_DIVISOR = 7.0
+        mc.rotate(0,str(r.randint(-ROT_RANGE,ROT_RANGE)/ROT_DIVISOR)+'deg',0)
+               
+        mc.move(0,0,SLEEPERS_DIST*curSleeper)
+        mc.hyperShade(assign=sleeperShader)
+        sleepers.append(curSleeperObj[0])
+    sleepers.insert(0,mc.group(sleepers, n="sleepers"))
+   
+    
+    #create first rail
+    rails = []
+    mc.polyCube(w=0.8, h=.1, d=LENGTH_RAIL,n="railBottom")
+    mc.move((TRACK_WIDTH/2),0.34,9)
+    mc.duplicate()
+    mc.rename("railTop")
+    mc.move(0,0.55,0,r=1)
+    mc.duplicate()
+    mc.rename("railMid")
+    mc.scale(0.75,5,1)
+    mc.move(0,-0.28,0,r=1)
+    rail = mc.polyUnite("railBottom","railMid","railTop",ch=0,n="rail1")
+    mc.hyperShade(assign = railShader)
+    rails.append(rail[0])
+    #lay second rail
+    rail = mc.duplicate()
+    rails.append(rail[0])
+    mc.move(-TRACK_WIDTH,0,0,r=1)
+    rails.insert(0,mc.group(rails,n="rails"))
+    
+    #create + instance tie plates
+    tiePlates = []
+    #instance tie plates LEFT
+    tiePlatesLeft = []
+    for tiePlate in range (0, NUM_SLEEPERS):
+        curTiePlate = mc.polyCube(w=1.5,h=0.07,d=0.75,sx=3,n="tiePlate1")
+        mc.move(-(TRACK_WIDTH/2),0.24,SLEEPERS_DIST*tiePlate)
+        mc.hyperShade(assign=nailAndPlateShader)
+        tiePlatesLeft.append(curTiePlate[0])
+    #group tie plates LEFT
+    tiePlatesLeft.insert(0, mc.group(tiePlatesLeft, n="tiePlatesLeft"))
+    #duplicate grouped tie plates RIGHT
+    tiePlatesRight = mc.duplicate(n="tiePlatesRight")
+    mc.move(TRACK_WIDTH,0,0)
+    tiePlates.append(tiePlatesLeft[0])
+    tiePlates.append(tiePlatesRight[0])
+    tiePlates.insert(0,mc.group(tiePlates,n="tiePlates"))
+    
+    #create and populate nailsOuter
+    nailsOuter = []
+    for nail in range (0, NUM_SLEEPERS):
+        #create nail head
+        mc.polyCube(w=0.15,h=0.08,d=0.15,sx=1,sy=4,sz=1,n="nailHead")
+        mc.move(-(TRACK_WIDTH/2+0.46), 0.45, -0.2)
+        #create nail body
+        mc.polyCube(w=0.1,h=0.2,d=0.1,sx=1,sy=4,sz=1,n="nailBody")
+        mc.move(-(TRACK_WIDTH/2+0.46), 0.35, -0.2)
+        #combine parts of nail
+        curNail = mc.polyUnite("nailHead","nailBody",n="nail1",ch=0)
+        mc.move(0,0,SLEEPERS_DIST*nail)
+        mc.hyperShade(assign=nailAndPlateShader)
+        nailsOuter.append(curNail[0])
+    nailsOuter.insert(0,mc.group(nailsOuter,n="nailsOuter"))
+    
+    #duplicate nailsOuter to nailsInner
+    nailsInner = mc.duplicate(n="nailsInner")
+    mc.move(0.92,0,0.4)
+    
+    nailsLeft = []
+    nailsLeft.append(mc.group(nailsOuter[0], nailsInner[0],n="nailsLeft"))
+    
+    nailsRight = [] 
+    nailsRight = mc.duplicate(n="nailsRight")
+    mc.scale(-1,1,1)
+    mc.move(TRACK_WIDTH,0,0)
+    
+    nails = []
+    nails.append(mc.group(nailsLeft[0], nailsRight[0],n="nails"))
+    
+    #rest of track segments
+    curTrackSeg = mc.group(sleepers[0], rails[0], tiePlates[0], nails[0],n="trackSegment1")
+    
+    mc.move(0,0,LENGTH_RAIL*trackSegment)
+    trackSegs.append(curTrackSeg)
+railroad = mc.group(trackSegs,n="railroad")
+
+locomotiveLength = DEFAULT_LOCOMOTIVE_LENGTH
+
+mc.move(0,0,-locomotiveLength,r=1)
+
+CreateLocomotive(locomotiveLength)
+
+carLength = 20.0
+
+cars = []
+for car in range(0, userNumCars):
+    randomCarType = r.randint(1,NUM_CAR_TYPES)
+    print randomCarType
+    curCar = CreateCar(randomCarType, carLength)
+    mc.move(0,0,(carLength+DEFAULT_CONNECTOR_LENGTH)*car,r=1)
+    print curCar
+    cars.append(curCar)
+print cars
+cars.insert(0,mc.group(cars,n="cars"))
+mc.move(0,0,locomotiveLength/1.25,r=1)

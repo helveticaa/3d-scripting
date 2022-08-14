@@ -1,0 +1,102 @@
+import maya.cmds as mc
+import random as r
+
+NUM_TRACK_SEGS = 6
+NUM_SLEEPERS = 8
+WIDTH_SLEEPERS = 1.3
+LENGTH_SLEEPERS = 13
+SLEEPERS_DIST = 2.5
+TRACK_WIDTH = 10
+LENGTH_RAIL = 20
+
+trackSegs = []
+for trackSegment in range (0,NUM_TRACK_SEGS):
+    #create + instance sleepers
+    sleepers = []
+    for curSleeper in range(0, NUM_SLEEPERS):
+        curSleeperObj = mc.polyCube(w=LENGTH_SLEEPERS, h=0.4, d=WIDTH_SLEEPERS,n="sleeper1")
+        
+        #rotationAmt = 4.0/(r.randint(1.0,2.0))
+        #rotationDir = r.randint(-1,1)
+        #mc.rotate(0,str(rotationDir*rotationAmt)+'deg',0)
+        ROT_RANGE = 20
+        ROT_DIVISOR = 7.0
+        mc.rotate(0,str(r.randint(-ROT_RANGE,ROT_RANGE)/ROT_DIVISOR)+'deg',0)
+
+        mc.move(0,0,SLEEPERS_DIST*curSleeper)
+        sleepers.append(curSleeperObj[0])
+    sleepers.insert(0,mc.group(sleepers, n="sleepers"))
+   
+    
+    #create first rail
+    rails = []
+    mc.polyCube(w=0.8, h=.1, d=LENGTH_RAIL,n="railBottom")
+    mc.move((TRACK_WIDTH/2),0.34,9)
+    mc.duplicate()
+    mc.rename("railTop")
+    mc.move(0,0.55,0,r=1)
+    mc.duplicate()
+    mc.rename("railMid")
+    mc.scale(0.75,5,1)
+    mc.move(0,-0.28,0,r=1)
+    rail = mc.polyUnite("railBottom","railMid","railTop",ch=0,n="rail1")
+    rails.append(rail[0])
+    #lay second rail
+    rail = mc.duplicate()
+    rails.append(rail[0])
+    mc.move(-TRACK_WIDTH,0,0,r=1)
+    rails.insert(0,mc.group(rails,n="rails"))
+    
+    #create + instance tie plates
+    tiePlates = []
+    #instance tie plates LEFT
+    tiePlatesLeft = []
+    for tiePlate in range (0, NUM_SLEEPERS):
+        curTiePlate = mc.polyCube(w=1.5,h=0.07,d=0.75,sx=3,n="tiePlate1")
+        mc.move(-(TRACK_WIDTH/2),0.24,SLEEPERS_DIST*tiePlate)
+        tiePlatesLeft.append(curTiePlate[0])
+    #group tie plates LEFT
+    tiePlatesLeft.insert(0, mc.group(tiePlatesLeft, n="tiePlatesLeft"))
+    #duplicate grouped tie plates RIGHT
+    tiePlatesRight = mc.duplicate(n="tiePlatesRight")
+    mc.move(TRACK_WIDTH,0,0)
+    tiePlates.append(tiePlatesLeft[0])
+    tiePlates.append(tiePlatesRight[0])
+    tiePlates.insert(0,mc.group(tiePlates,n="tiePlates"))
+    
+    #create and populate nailsOuter
+    nailsOuter = []
+    for nail in range (0, NUM_SLEEPERS):
+        #create nail head
+        mc.polyCube(w=0.15,h=0.08,d=0.15,sx=1,sy=4,sz=1,n="nailHead")
+        mc.move(-(TRACK_WIDTH/2+0.46), 0.45, -0.2)
+        #create nail body
+        mc.polyCube(w=0.1,h=0.2,d=0.1,sx=1,sy=4,sz=1,n="nailBody")
+        mc.move(-(TRACK_WIDTH/2+0.46), 0.35, -0.2)
+        #combine parts of nail
+        curNail = mc.polyUnite("nailHead","nailBody",n="nail1",ch=0)
+        mc.move(0,0,SLEEPERS_DIST*nail)
+        nailsOuter.append(curNail[0])
+    nailsOuter.insert(0,mc.group(nailsOuter,n="nailsOuter"))
+    
+    #duplicate nailsOuter to nailsInner
+    nailsInner = mc.duplicate(n="nailsInner")
+    mc.move(0.92,0,0.4)
+    
+    nailsLeft = []
+    nailsLeft.append(mc.group(nailsOuter[0], nailsInner[0],n="nailsLeft"))
+    
+    nailsRight = [] 
+    nailsRight = mc.duplicate(n="nailsRight")
+    mc.scale(-1,1,1)
+    mc.move(TRACK_WIDTH,0,0)
+    
+    nails = []
+    nails.append(mc.group(nailsLeft[0], nailsRight[0],n="nails"))
+    
+    #rest of track segments
+    curTrackSeg = mc.group(sleepers[0], rails[0], tiePlates[0], nails[0],n="trackSegment1")
+    
+    mc.move(0,0,LENGTH_RAIL*trackSegment)
+    trackSegs.append(curTrackSeg)
+railroad = mc.group(trackSegs,n="railroad")
