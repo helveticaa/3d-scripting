@@ -35,7 +35,17 @@ for file in filesToImport:
     curAttCr.parm("string1").set(curGeoName)  
     curAttCr.setInput(0,curUnwrapNode)
     
-    mergeNode.setInput(counter,curAttCr,0)
+    curNull = containerNode.createNode("null",curGeoName)
+    curNull.setInput(0,curAttCr,0)
+    
+    fbxRop = containerNode.createNode("rop_fbx")
+    fbxRop.setInput(0,curNull,0)
+    version = "00"
+    outputFilePath = ("C:/hales/Desktop/UNFAMILIAR_ASSETS/pantry/"+
+    "pantry_fbx/"+curGeoName+"_"+version+".fbx")
+    fbxRop.parm("sopoutput").set(outputFilePath)
+    
+    mergeNode.setInput(counter,curNull,0)
     counter+=1
     
 alignDist = containerNode.createNode("align_and_distribute")
