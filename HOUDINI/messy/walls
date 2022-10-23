@@ -1,0 +1,50 @@
+import hou
+import os
+
+filePath = "C:/Users/hales/Desktop/UNFAMILIAR_ASSETS/walls/wall_geo"
+
+#create container geo node 
+containerNode = hou.node("/obj").createNode("geo","walls_individual_rops")
+#create merge node
+#mergeNode = hou.node("/obj/"+containerNode.name()).createNode("merge")
+mergeNode = containerNode.createNode("merge")
+
+#pull the files from the folder into a list of files 
+filesToImport = os.listdir(filePath)
+counter = 0
+
+for file in filesToImport:
+    #create file node
+    curFileNode = containerNode.createNode("file",str(file)+"_GEO")
+    curFileNode.parm("file").set(filePath+"/"+str(file))
+    
+    curGeoName = file.replace("prod_","")
+    curGeoName = curGeoName.replace(".usd","")
+    
+    curUnpackNode = containerNode.createNode("unpackusd::2.0")
+    curUnpackNode.parm("output").set(1)
+    curUnpackNode.setInput(0,curFileNode,0)
+    
+    curUnwrapNode = containerNode.createNode("uvunwrap")
+    curUnwrapNode.setInput(0,curUnpackNode,0)
+    
+    curAttCr = containerNode.createNode("attribcreate")
+    curAttCr.parm("type1").set("index")
+    curAttCr.parm("name1").set("shop_materialpath")
+    curAttCr.parm("class1").set("primitive")
+    curAttCr.parm("string1").set(curGeoName)  
+    curAttCr.setInput(0,curUnwrapNode)
+    
+    curGeoName = str(file).replace(".usd","")
+    curGeoName = curGeoName.replace("prod_","")
+    
+    curRop = containerNode.createNode("rop_fbx")
+    curRop.parm("sopoutput").set("$HIP/wall_FBX/"+curGeoName+".fbx")
+    curRop.setInput(0,curAttCr,0)
+    curRop.parm("execute").pressButton()
+    
+    mergeNode.setInput(counter,curAttCr,0)
+    counter+=1
+    
+#layout nodes
+hou.node("/obj/"+containerNode.name()).layoutChildren()
