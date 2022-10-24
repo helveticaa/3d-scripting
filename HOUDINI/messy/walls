@@ -2,7 +2,7 @@ import hou
 import os
 
 filePath = "C:/Users/hales/Desktop/UNFAMILIAR_ASSETS/walls/wall_geo"
-exportFilePath = "$HIP/wall_FBX/"
+exportFilePath = "$HIP/TEST_FBX/"
 
 #create container geo node 
 containerNode = hou.node("/obj").createNode("geo","prop_layout")
@@ -49,7 +49,7 @@ for file in filesToImport:
 
 finalRop = containerNode.createNode("rop_fbx")
 finalRop.parm("sopoutput").set(exportFilePath+"prop_layout.fbx")
-finalRop.setInput(mergeNode,0,0)
+finalRop.setInput(0,mergeNode,0)
 finalRop.parm("execute").pressButton()
 
 
