@@ -2,9 +2,10 @@ import hou
 import os
 
 filePath = "C:/Users/hales/Desktop/UNFAMILIAR_ASSETS/walls/wall_geo"
+exportFilePath = "$HIP/wall_FBX/"
 
 #create container geo node 
-containerNode = hou.node("/obj").createNode("geo","walls_individual_rops")
+containerNode = hou.node("/obj").createNode("geo","prop_layout")
 #create merge node
 #mergeNode = hou.node("/obj/"+containerNode.name()).createNode("merge")
 mergeNode = containerNode.createNode("merge")
@@ -39,12 +40,18 @@ for file in filesToImport:
     curGeoName = curGeoName.replace("prod_","")
     
     curRop = containerNode.createNode("rop_fbx")
-    curRop.parm("sopoutput").set("$HIP/wall_FBX/"+curGeoName+".fbx")
+    curRop.parm("sopoutput").set(exportFilePath+curGeoName+".fbx")
     curRop.setInput(0,curAttCr,0)
     curRop.parm("execute").pressButton()
     
     mergeNode.setInput(counter,curAttCr,0)
     counter+=1
-    
+
+finalRop = containerNode.createNode("rop_fbx")
+finalRop.parm("sopoutput").set(exportFilePath+"prop_layout.fbx")
+finalRop.setInput(mergeNode,0,0)
+finalRop.parm("execute").pressButton()
+
+
 #layout nodes
 hou.node("/obj/"+containerNode.name()).layoutChildren()
