@@ -1,0 +1,7 @@
+import hou
+
+propLayout = hou.node("/obj/prop_layout")
+
+for node in hou.sopNodeTypeCategory().nodeType("rop_fbx").instances():
+    print(node)
+    node.parm("execute").pressButton()
